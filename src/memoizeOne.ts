@@ -1,7 +1,5 @@
-const MAX_CACHE_SIZE = 10;
-
 /**
- * A memoization decorator/function that caches the results of method calls to improve performance.
+ * A memoization decorator/function that caches the most recent result of a method call to improve performance.
  * This decorator/function can be applied to methods in a class as a decorator and functions without context as a function.
  *
  * @template This The type of the `this` context within the method.
@@ -11,31 +9,25 @@ const MAX_CACHE_SIZE = 10;
  * @param {Function} target The method or function to be memoized.
  * @param {ClassMethodDecoratorContext} [context] The context in which the decorator is being applied. Optional for standard functions.
  *
- * @returns {Function} A new function that wraps the original method or function with caching logic.
+ * @returns {Function} A new function that wraps the original method or function with caching logic, storing only the most recent result.
  */
-export function memoize<This, Args extends unknown[], Return>(
+export function memoizeOne<This, Args extends unknown[], Return>(
   target: ((this: This, ...args: Args) => Return) | ((...args: Args) => Return),
   context?: ClassMethodDecoratorContext<This, (this: This, ...args: Args) => Return>
 ): (this: This, ...args: Args) => Return {
-  const cache = new Map<string, Return>();
+  let lastCacheKey: string;
+  let lastCache: Return;
 
   return function (this: This, ...args: Args): Return {
     console.log(`Entering method ${context ? String(context.name) : ''}(${JSON.stringify(args)}).`);
 
     const key = JSON.stringify(args);
-    let result;
-    if (cache.has(key)) {
-      result = cache.get(key) as Return;
-    } else {
-      result = context ? target.call(this, ...args) : (target as (...args: Args) => Return)(...args);
-      cache.set(key, result);
-      if (cache.size > MAX_CACHE_SIZE) {
-        const oldestKey = cache.keys().next().value;
-        cache.delete(oldestKey);
-      }
+    if (lastCacheKey !== key) {
+      lastCacheKey = key;
+      lastCache = context ? target.call(this, ...args) : (target as (...args: Args) => Return)(...args);
     }
 
     console.log(`Exiting method ${context ? String(context.name) : ''}${String(context?.name)}.`);
-    return result;
+    return lastCache;
   };
 }

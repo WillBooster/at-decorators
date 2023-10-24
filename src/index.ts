@@ -1,1 +1,2 @@
-export { memoize, memoizeFunction } from './memoize.js';
+export { memoize } from './memoize.js';
+export { memoizeOne } from './memoizeOne.js';
