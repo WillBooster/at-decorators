@@ -1,33 +1,54 @@
 /**
- * A memoization decorator/function that caches the most recent result of a method call to improve performance.
- * This decorator/function can be applied to methods in a class as a decorator and functions without context as a function.
+ * A memoization decorator/function that caches the results of the latest method/getter/function call to improve performance.
+ * This decorator/function can be applied to methods and getters in a class as a decorator, and functions without context as a function.
+ * The cache only stores the latest value. When a new value is computed, the previous cached value is replaced.
  *
- * @template This The type of the `this` context within the method.
- * @template Args The types of the arguments to the method.
- * @template Return The return type of the method.
+ * @template This The type of the `this` context within the method, getter or function.
+ * @template Args The types of the arguments to the method, getter or function.
+ * @template Return The return type of the method, getter or function.
  *
- * @param {Function} target The method or function to be memoized.
- * @param {ClassMethodDecoratorContext} [context] The context in which the decorator is being applied. Optional for standard functions.
+ * @param {Function | keyof This} target The method, function or the name of getter to be memoized.
+ * @param {ClassMethodDecoratorContext | ClassGetterDecoratorContext} [context] The context in which the decorator is being applied. Optional for standard functions.
  *
- * @returns {Function} A new function that wraps the original method or function with caching logic, storing only the most recent result.
+ * @returns {Function} A new function that wraps the original method or getter, function with caching logic.
  */
 export function memoizeOne<This, Args extends unknown[], Return>(
-  target: ((this: This, ...args: Args) => Return) | ((...args: Args) => Return),
-  context?: ClassMethodDecoratorContext<This, (this: This, ...args: Args) => Return>
+  target: ((this: This, ...args: Args) => Return) | ((...args: Args) => Return) | keyof This,
+  context?:
+    | ClassMethodDecoratorContext<This, (this: This, ...args: Args) => Return>
+    | ClassGetterDecoratorContext<This, Return>
 ): (this: This, ...args: Args) => Return {
-  let lastCacheKey: string;
   let lastCache: Return;
 
+  if (context?.kind === 'getter') {
+    let cached = false;
+    return function (this: This): Return {
+      console.log(`Entering getter ${String(context.name)}.`);
+
+      if (!cached) {
+        cached = true;
+        lastCache = this[target as keyof This] as Return;
+      }
+
+      console.log(`Exiting getter ${String(context.name)}.`);
+      return lastCache;
+    };
+  }
+
+  let lastCacheKey: string;
+
   return function (this: This, ...args: Args): Return {
-    console.log(`Entering method ${context ? String(context.name) : ''}(${JSON.stringify(args)}).`);
+    console.log(`Entering ${context ? `method ${String(context.name)}` : 'function'}(${JSON.stringify(args)}).`);
 
     const key = JSON.stringify(args);
     if (lastCacheKey !== key) {
       lastCacheKey = key;
-      lastCache = context ? target.call(this, ...args) : (target as (...args: Args) => Return)(...args);
+      lastCache = context
+        ? (target as (this: This, ...args: Args) => Return).call(this, ...args)
+        : (target as (...args: Args) => Return)(...args);
     }
 
-    console.log(`Exiting method ${context ? String(context.name) : ''}${String(context?.name)}.`);
+    console.log(`Exiting ${context ? `method ${String(context.name)}` : 'function'}.`);
     return lastCache;
   };
 }
