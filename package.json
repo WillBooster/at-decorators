@@ -1,7 +1,7 @@
 {
-  "name": "decorators-es",
+  "name": "at-decorators",
   "version": "0.0.0-semantically-released",
-  "repository": "github:WillBooster/decorators-es",
+  "repository": "github:WillBooster/at-decorators",
   "license": "Apache-2.0",
   "author": "WillBooster Inc.",
   "sideEffects": false,
