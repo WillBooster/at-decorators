@@ -1,5 +1,18 @@
 const MAX_CACHE_SIZE = 10;
 
+/**
+ * A memoization decorator that caches the results of method calls to improve performance.
+ * This decorator can be applied to methods in a class.
+ *
+ * @template This The type of the `this` context within the method.
+ * @template Args The types of the arguments to the method.
+ * @template Return The return type of the method.
+ *
+ * @param {Function} target The method to be memoized.
+ * @param {ClassMethodDecoratorContext} context The context in which the decorator is being applied.
+ *
+ * @returns {Function} A new function that wraps the original method with caching logic.
+ */
 export function memoize<This, Args extends unknown[], Return>(
   target: (this: This, ...args: Args) => Return,
   context: ClassMethodDecoratorContext<This, (this: This, ...args: Args) => Return>
@@ -27,6 +40,16 @@ export function memoize<This, Args extends unknown[], Return>(
   };
 }
 
+/**
+ * A memoization function for standalone functions that caches the results of function calls to improve performance.
+ *
+ * @template Args The types of the arguments to the function.
+ * @template Return The return type of the function.
+ *
+ * @param {Function} func The function to be memoized.
+ *
+ * @returns {Function} A new function that wraps the original function with caching logic.
+ */
 export function memoizeFunction<Args extends unknown[], Return>(
   func: (...args: Args) => Return
 ): (...args: Args) => Return {
