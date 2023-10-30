@@ -27,7 +27,7 @@ export function memoizeOne<This, Args extends unknown[], Return>(
 
       if (!cached) {
         cached = true;
-        lastCache = this[target as keyof This] as Return;
+        lastCache = (target as (this: This) => Return).call(this);
       }
 
       console.log(`Exiting getter ${String(context.name)}.`);
