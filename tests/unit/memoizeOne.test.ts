@@ -34,5 +34,6 @@ test.each([
 });
 
 test('memoizeOne getter', () => {
-  expect(random.count).toBe(random.count);
+  expect(random.count).toBe(1);
+  expect(random.count).toBe(1);
 });
