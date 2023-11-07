@@ -1,11 +1,17 @@
 import { memoizeOne } from '../../src/memoizeOne.js';
 
+import { getNextInteger } from './shared.js';
+
 class Random {
-  _count = 1;
+  _count: number;
+
+  constructor(initialCount = 1) {
+    this._count = initialCount;
+  }
 
   @memoizeOne
-  nextInteger(inclusiveMinInteger = 0, exclusiveMaxInteger = 100): number {
-    return Math.floor(inclusiveMinInteger + Math.random() * exclusiveMaxInteger);
+  nextInteger(base = 0): number {
+    return base + getNextInteger();
   }
 
   @memoizeOne
@@ -13,14 +19,15 @@ class Random {
     return this._count++;
   }
 }
-const random = new Random();
+const random1 = new Random();
+const random2 = new Random(10);
 
 const nextInteger = memoizeOne((inclusiveMinInteger: number = 0, exclusiveMaxInteger: number = 100): number =>
   Math.floor(inclusiveMinInteger + Math.random() * exclusiveMaxInteger)
 );
 
 test.each([
-  ['with', (...args: number[]) => random.nextInteger(...args)],
+  ['with', (...args: number[]) => random1.nextInteger(...args)],
   ['without', (...args: number[]) => nextInteger(...args)],
 ])('memoizeOne function %s decorator', (_, func) => {
   expect(func()).toBe(func());
@@ -33,7 +40,14 @@ test.each([
   expect(cache2).not.toBe(func(100));
 });
 
-test('memoizeOne getter', () => {
-  expect(random.count).toBe(1);
-  expect(random.count).toBe(1);
+test('memoize function per instance', () => {
+  expect(random1.nextInteger()).not.toBe(random2.nextInteger());
+  expect(random1.nextInteger(100)).not.toBe(random2.nextInteger(100));
+});
+
+test('memoizeOne getter per instance', () => {
+  expect(random1.count).toBe(1);
+  expect(random1.count).toBe(1);
+  expect(random2.count).toBe(10);
+  expect(random2.count).toBe(10);
 });

@@ -18,15 +18,16 @@ export function memoizeOne<This, Args extends unknown[], Return>(
     | ClassMethodDecoratorContext<This, (this: This, ...args: Args) => Return>
     | ClassGetterDecoratorContext<This, Return>
 ): (this: This, ...args: Args) => Return {
+  let lastThis: This;
   let lastCache: Return;
 
   if (context?.kind === 'getter') {
-    let cached = false;
     return function (this: This): Return {
       console.log(`Entering getter ${String(context.name)}.`);
 
-      if (!cached) {
-        cached = true;
+      if (lastThis !== this) {
+        // eslint-disable-next-line
+        lastThis = this;
         lastCache = (target as (this: This) => Return).call(this);
       }
 
@@ -41,7 +42,9 @@ export function memoizeOne<This, Args extends unknown[], Return>(
     console.log(`Entering ${context ? `method ${String(context.name)}` : 'function'}(${JSON.stringify(args)}).`);
 
     const key = JSON.stringify(args);
-    if (lastCacheKey !== key) {
+    if (lastThis !== this || lastCacheKey !== key) {
+      // eslint-disable-next-line
+      lastThis = this;
       lastCacheKey = key;
       lastCache = context
         ? (target as (this: This, ...args: Args) => Return).call(this, ...args)
