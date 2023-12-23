@@ -23,11 +23,12 @@ export const memoizeOne = memoizeOneFactory();
  */
 export function memoizeOneFactory(cacheDuration = Number.POSITIVE_INFINITY) {
   return function <This, Args extends unknown[], Return>(
-    target: ((this: This, ...args: Args) => Return) | ((...args: Args) => Return) | keyof This,
+    target: ((this: This, ...args: Args) => Return) | ((...args: Args) => Return) | keyof This | unknown,
     context?:
       | ClassMethodDecoratorContext<This, (this: This, ...args: Args) => Return>
       | ClassGetterDecoratorContext<This, Return>
-  ): (this: This, ...args: Args) => Return {
+      | any /* eslint-disable-line @typescript-eslint/no-explicit-any */
+  ): ((this: This, ...args: Args) => Return) | any /* eslint-disable-line @typescript-eslint/no-explicit-any */ {
     let lastThis: This;
     let lastCache: Return;
     let lastCachedAt: number;
