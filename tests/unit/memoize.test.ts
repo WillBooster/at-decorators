@@ -50,3 +50,18 @@ test('memoizeFactory with 0 cacheDuration', () => {
   expect(nextInteger2()).not.toBe(nextInteger2());
   expect(nextInteger2(100)).not.toBe(nextInteger2(100));
 });
+
+const memoizeOneValue = memoizeFactory(Number.MAX_SAFE_INTEGER, 1);
+class Klass {
+  @memoizeOneValue
+  get obj(): Record<string, string> {
+    return {};
+  }
+}
+
+test('memoizeOneValue', () => {
+  const k = new Klass();
+  expect(k.obj).toEqual({});
+  k.obj['a'] = 'b';
+  expect(k.obj).toEqual({ a: 'b' });
+});
