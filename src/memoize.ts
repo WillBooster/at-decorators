@@ -32,12 +32,11 @@ export function memoizeFactory(
   cacheDuration = Number.POSITIVE_INFINITY
 ) {
   return function memoize<This, Args extends unknown[], Return>(
-    target: ((this: This, ...args: Args) => Return) | ((...args: Args) => Return) | keyof This | unknown,
+    target: ((this: This, ...args: Args) => Return) | ((...args: Args) => Return) | keyof This,
     context?:
       | ClassMethodDecoratorContext<This, (this: This, ...args: Args) => Return>
       | ClassGetterDecoratorContext<This, Return>
-      | any /* eslint-disable-line @typescript-eslint/no-explicit-any */
-  ): ((this: This, ...args: Args) => Return) | any /* eslint-disable-line @typescript-eslint/no-explicit-any */ {
+  ): (this: This, ...args: Args) => Return {
     if (context?.kind === 'getter') {
       const cacheByThis = new Map<This, [Return, number]>();
       return function (this: This): Return {
