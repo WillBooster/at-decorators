@@ -1,3 +1,5 @@
+import { test, expect } from 'vitest';
+
 import { memoizeOne, memoizeOneFactory } from '../../src/memoizeOne.js';
 
 import { getNextInteger } from './shared.js';

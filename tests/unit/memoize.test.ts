@@ -1,3 +1,5 @@
+import { test, expect } from 'vitest';
+
 import { memoizeOne } from '../../src/index.js';
 import { memoize, memoizeFactory } from '../../src/memoize.js';
 
