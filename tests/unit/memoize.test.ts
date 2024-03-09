@@ -1,8 +1,9 @@
+import { memoizeOne } from '../../src/index.js';
 import { memoize, memoizeFactory } from '../../src/memoize.js';
 
 import { getNextInteger } from './shared.js';
 
-class Random {
+abstract class Random {
   _count: number;
 
   constructor(initialCount = 1) {
@@ -14,13 +15,18 @@ class Random {
     return base + getNextInteger();
   }
 
-  @memoize
+  abstract get count(): number;
+}
+
+class RandomChild extends Random {
+  @memoizeOne
   get count(): number {
     return this._count++;
   }
 }
-const random1 = new Random();
-const random2 = new Random(10);
+
+const random1 = new RandomChild();
+const random2 = new RandomChild(10);
 
 const nextInteger1 = memoize((base: number = 0): number => base + getNextInteger());
 const nextInteger2 = memoizeFactory(10, 10, -1)((base: number = 0): number => base + getNextInteger());
