@@ -41,7 +41,7 @@
   },
   "prettier": "@willbooster/prettier-config",
   "devDependencies": {
-    "@types/eslint": "8.56.5",
+    "@types/eslint": "8.56.6",
     "@types/jest": "29.5.12",
     "@typescript-eslint/eslint-plugin": "7.3.1",
     "@typescript-eslint/parser": "7.3.1",
@@ -62,7 +62,7 @@
     "micromatch": "4.0.5",
     "pinst": "3.0.0",
     "prettier": "3.2.5",
-    "semantic-release": "23.0.3",
+    "semantic-release": "23.0.5",
     "sort-package-json": "2.8.0",
     "ts-jest": "29.1.2",
     "typescript": "5.4.3"
