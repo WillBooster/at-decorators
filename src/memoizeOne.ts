@@ -17,11 +17,15 @@ export const memoizeOne = memoizeOneFactory();
 /**
  * A factory function to create a memoizeOne function with a customizable cache duration.
  *
- * @param {number} [cacheDuration=Number.POSITIVE_INFINITY] - The maximum number of milliseconds that a cached value is valid. *
+ * @param {Object} options - The options for the memoizeOne function.
+ * @param {number} [options.cacheDuration=Number.POSITIVE_INFINITY] - The maximum number of milliseconds that a cached value is valid.
  *
  * @returns {Function} A memoizeOne function with the specified cache duration.
+ * @template This - The type of the `this` context within the method, getter or function.
+ * @template Args - The types of the arguments to the method, getter or function.
+ * @template Return - The return type of the method, getter or function.
  */
-export function memoizeOneFactory(cacheDuration = Number.POSITIVE_INFINITY) {
+export function memoizeOneFactory({ cacheDuration = Number.POSITIVE_INFINITY }: { cacheDuration?: number } = {}) {
   return function <This, Args extends unknown[], Return>(
     target: ((this: This, ...args: Args) => Return) | ((...args: Args) => Return) | keyof This,
     context?:
