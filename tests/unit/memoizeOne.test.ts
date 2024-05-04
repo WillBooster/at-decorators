@@ -28,7 +28,7 @@ const random1 = new RandomChild();
 const random2 = new RandomChild(10);
 
 const nextInteger1 = memoizeOne((base: number = 0): number => base + getNextInteger());
-const nextInteger2 = memoizeOneFactory(-1)((base: number = 0): number => base + getNextInteger());
+const nextInteger2 = memoizeOneFactory({ cacheDuration: -1 })((base: number = 0): number => base + getNextInteger());
 
 test.each([
   ['with', (...args: number[]) => random1.nextInteger(...args)],
