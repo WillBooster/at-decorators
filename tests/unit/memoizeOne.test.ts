@@ -32,6 +32,10 @@ const random2 = new RandomChild(10);
 const nextInteger1 = memoizeOne((base: number = 0): number => base + getNextInteger());
 const nextInteger2 = memoizeOneFactory({ cacheDuration: -1 })((base: number = 0): number => base + getNextInteger());
 const nextInteger3 = memoizeOneFactory({ cacheDuration: 200 })((base: number = 0): number => base + getNextInteger());
+const asyncNextInteger = memoizeOne(async (base: number = 0): Promise<number> => {
+  await setTimeout(0);
+  return base + getNextInteger();
+});
 
 test.each([
   ['with', (...args: number[]) => random1.nextInteger(...args)],
@@ -45,6 +49,13 @@ test.each([
   const cache2 = func(100);
   expect(cache1).not.toBe(func());
   expect(cache2).not.toBe(func(100));
+});
+
+test('memoize async function', async () => {
+  expect(typeof (await asyncNextInteger())).toBe('number');
+  expect(await asyncNextInteger()).toBe(await asyncNextInteger());
+  expect(await asyncNextInteger(100)).toBe(await asyncNextInteger(100));
+  expect(await asyncNextInteger(0)).not.toBe(await asyncNextInteger(100));
 });
 
 test('memoize method per instance', () => {
