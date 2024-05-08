@@ -1,3 +1,5 @@
+import { setTimeout } from 'node:timers/promises';
+
 import { memoizeOne, memoizeOneFactory } from '../../src/memoizeOne.js';
 
 import { getNextInteger } from './shared.js';
@@ -29,6 +31,7 @@ const random2 = new RandomChild(10);
 
 const nextInteger1 = memoizeOne((base: number = 0): number => base + getNextInteger());
 const nextInteger2 = memoizeOneFactory({ cacheDuration: -1 })((base: number = 0): number => base + getNextInteger());
+const nextInteger3 = memoizeOneFactory({ cacheDuration: 200 })((base: number = 0): number => base + getNextInteger());
 
 test.each([
   ['with', (...args: number[]) => random1.nextInteger(...args)],
@@ -59,4 +62,15 @@ test('memoizeOne getter per instance', () => {
 test('memoizeFactory with 0 cacheDuration', () => {
   expect(nextInteger2()).not.toBe(nextInteger2());
   expect(nextInteger2(100)).not.toBe(nextInteger2(100));
+});
+
+test('memoizeFactory with 200 cacheDuration', async () => {
+  const initial = nextInteger3();
+  expect(nextInteger3()).toBe(initial);
+  expect(nextInteger3()).toBe(initial);
+  await setTimeout(400);
+  const second = nextInteger3();
+  expect(second).not.toBe(initial);
+  expect(nextInteger3()).toBe(second);
+  expect(nextInteger3()).toBe(second);
 });

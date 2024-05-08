@@ -1,3 +1,5 @@
+import { setTimeout } from 'node:timers/promises';
+
 import { memoizeOne } from '../../src/index.js';
 import { memoize, memoizeFactory } from '../../src/memoize.js';
 
@@ -32,6 +34,7 @@ const nextInteger1 = memoize((base: number = 0): number => base + getNextInteger
 const nextInteger2 = memoizeFactory({ maxCachedThisSize: 10, maxCachedArgsSize: 10, cacheDuration: -1 })(
   (base: number = 0): number => base + getNextInteger()
 );
+const nextInteger3 = memoizeFactory({ cacheDuration: 200 })((base: number = 0): number => base + getNextInteger());
 
 test.each([
   ['with', (...args: number[]) => random1.nextInteger(...args)],
@@ -57,6 +60,17 @@ test('memoize getter per instance', () => {
 test('memoizeFactory with 0 cacheDuration', () => {
   expect(nextInteger2()).not.toBe(nextInteger2());
   expect(nextInteger2(100)).not.toBe(nextInteger2(100));
+});
+
+test('memoizeFactory with 200 cacheDuration', async () => {
+  const initial = nextInteger3();
+  expect(nextInteger3()).toBe(initial);
+  expect(nextInteger3()).toBe(initial);
+  await setTimeout(400);
+  const second = nextInteger3();
+  expect(second).not.toBe(initial);
+  expect(nextInteger3()).toBe(second);
+  expect(nextInteger3()).toBe(second);
 });
 
 const memoizeOneValue = memoizeFactory({ maxCachedThisSize: Number.MAX_SAFE_INTEGER, maxCachedArgsSize: 1 });
