@@ -30,10 +30,12 @@ export const memoize = memoizeFactory();
  * @param {number} [options.maxCachedArgsSize=100] - The maximum number of distinct return values that can be cached for each `this` context.
  * @param {number} [options.cacheDuration=Number.POSITIVE_INFINITY] - The maximum number of milliseconds that a cached value is valid.
  * @param {Function} [options.calcKey] - A function to calculate the cache key for a given set of arguments. Defaults to hashing the stringified arguments.
+ * @param {Map<unknown, unknown>[]} [options.caches] - An array of maps to store cached values.
  * @returns {Function} A new memoize function with the specified cache sizes.
  */
 export function memoizeFactory({
   cacheDuration = Number.POSITIVE_INFINITY,
+  caches,
   calcKey = (args) => cyrb64HashWithLength(JSON.stringify(args)),
   maxCachedArgsSize = 100,
   maxCachedThisSize = 10,
@@ -42,6 +44,7 @@ export function memoizeFactory({
   maxCachedThisSize?: number;
   cacheDuration?: number;
   calcKey?: (args: unknown) => string;
+  caches?: Map<unknown, unknown>[];
 } = {}) {
   return function memoize<This, Args extends unknown[], Return>(
     target: ((this: This, ...args: Args) => Return) | ((...args: Args) => Return) | keyof This,
@@ -51,6 +54,7 @@ export function memoizeFactory({
   ): (this: This, ...args: Args) => Return {
     if (context?.kind === 'getter') {
       const cacheByThis = new Map<This, [Return, number]>();
+      caches?.push(cacheByThis);
       return function (this: This): Return {
         console.log(`Entering getter ${String(context.name)}.`);
 
@@ -74,6 +78,7 @@ export function memoizeFactory({
       };
     } else {
       const cacheByThis = new Map<This, Map<string, [Return, number]>>();
+      caches?.push(cacheByThis);
 
       return function (this: This, ...args: Args): Return {
         console.log(`Entering ${context ? `method ${String(context.name)}` : 'function'}(${calcKey(args)}).`);
