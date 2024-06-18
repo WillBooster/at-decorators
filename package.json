@@ -44,8 +44,8 @@
   "devDependencies": {
     "@types/eslint": "8.56.10",
     "@types/jest": "29.5.12",
-    "@typescript-eslint/eslint-plugin": "7.13.0",
-    "@typescript-eslint/parser": "7.13.0",
+    "@typescript-eslint/eslint-plugin": "7.13.1",
+    "@typescript-eslint/parser": "7.13.1",
     "@willbooster/eslint-config-ts": "10.6.0",
     "@willbooster/prettier-config": "9.1.2",
     "build-ts": "13.1.8",
