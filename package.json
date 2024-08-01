@@ -42,7 +42,7 @@
   },
   "prettier": "@willbooster/prettier-config",
   "devDependencies": {
-    "@types/eslint": "8.56.10",
+    "@types/eslint": "8.56.11",
     "@types/jest": "29.5.12",
     "@typescript-eslint/eslint-plugin": "7.18.0",
     "@typescript-eslint/parser": "7.18.0",
@@ -65,7 +65,7 @@
     "prettier": "3.3.3",
     "semantic-release": "23.1.1",
     "sort-package-json": "2.10.0",
-    "ts-jest": "29.1.5",
+    "ts-jest": "29.2.4",
     "typescript": "5.5.4"
   },
   "packageManager": "yarn@4.3.1",
