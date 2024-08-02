@@ -85,6 +85,7 @@ export function memoizeFactory({
 
         const key = calcKey(args);
 
+        // If `target` is a function outside a class, `this` is undefined.
         let cacheByArgs = cacheByThis.get(this);
         const now = Date.now();
         if (cacheByArgs) {
