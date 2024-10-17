@@ -43,9 +43,9 @@
   "prettier": "@willbooster/prettier-config",
   "devDependencies": {
     "@types/eslint": "8.56.11",
-    "@types/jest": "29.5.12",
-    "@typescript-eslint/eslint-plugin": "8.4.0",
-    "@typescript-eslint/parser": "8.4.0",
+    "@types/jest": "29.5.13",
+    "@typescript-eslint/eslint-plugin": "8.10.0",
+    "@typescript-eslint/parser": "8.10.0",
     "@willbooster/eslint-config-ts": "10.6.0",
     "@willbooster/prettier-config": "9.1.2",
     "build-ts": "13.1.8",
@@ -53,11 +53,11 @@
     "eslint": "8.57.0",
     "eslint-config-prettier": "9.1.0",
     "eslint-import-resolver-typescript": "3.6.3",
-    "eslint-plugin-import": "2.30.0",
+    "eslint-plugin-import": "2.31.0",
     "eslint-plugin-sort-class-members": "1.20.0",
     "eslint-plugin-sort-destructure-keys": "2.0.0",
     "eslint-plugin-unicorn": "56.0.0",
-    "husky": "9.1.5",
+    "husky": "9.1.6",
     "jest": "29.7.0",
     "lint-staged": "15.2.10",
     "micromatch": "4.0.8",
@@ -66,9 +66,9 @@
     "semantic-release": "23.1.1",
     "sort-package-json": "2.10.1",
     "ts-jest": "29.2.5",
-    "typescript": "5.5.4"
+    "typescript": "5.6.3"
   },
-  "packageManager": "yarn@4.4.1",
+  "packageManager": "yarn@4.5.0",
   "publishConfig": {
     "access": "public"
   }
