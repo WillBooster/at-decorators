@@ -70,7 +70,7 @@ export function memoizeFactory({
         const result = (target as (this: This) => Return).call(this);
         if (cacheByThis.size >= maxCachedThisSize) {
           const oldestKey = cacheByThis.keys().next().value;
-          cacheByThis.delete(oldestKey);
+          cacheByThis.delete(oldestKey as This);
         }
         cacheByThis.set(this, [result, now]);
         console.log(`Exiting getter ${String(context.name)}.`);
@@ -100,7 +100,7 @@ export function memoizeFactory({
           cacheByArgs = new Map<string, [Return, number]>();
           if (cacheByThis.size >= maxCachedThisSize) {
             const oldestKey = cacheByThis.keys().next().value;
-            cacheByThis.delete(oldestKey);
+            cacheByThis.delete(oldestKey as This);
           }
           cacheByThis.set(this, cacheByArgs);
         }
@@ -110,7 +110,7 @@ export function memoizeFactory({
           : (target as (...args: Args) => Return)(...args);
         if (cacheByArgs.size >= maxCachedArgsSize) {
           const oldestKey = cacheByArgs.keys().next().value;
-          cacheByArgs.delete(oldestKey);
+          cacheByArgs.delete(oldestKey as string);
         }
         cacheByArgs.set(key, [result, now]);
 
