@@ -1,4 +1,4 @@
-import { cyrb64HashWithLength } from './hash.js';
+import { sha3_512 } from './hash.js';
 
 /**
  * A memoization decorator/function that caches the results of method/getter/function calls to improve performance.
@@ -36,7 +36,7 @@ export const memoize = memoizeFactory();
 export function memoizeFactory({
   cacheDuration = Number.POSITIVE_INFINITY,
   caches,
-  calcKey = (args) => cyrb64HashWithLength(JSON.stringify(args)),
+  calcKey = (args) => sha3_512(JSON.stringify(args)),
   maxCachedArgsSize = 100,
   maxCachedThisSize = 10,
 }: {
