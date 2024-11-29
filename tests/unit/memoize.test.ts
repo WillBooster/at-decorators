@@ -1,3 +1,5 @@
+import { setTimeout } from 'node:timers/promises';
+
 import { test, expect } from 'vitest';
 
 import { memoizeOne } from '../../src/index.js';
@@ -31,7 +33,14 @@ const random1 = new RandomChild();
 const random2 = new RandomChild(10);
 
 const nextInteger1 = memoize((base: number = 0): number => base + getNextInteger());
-const nextInteger2 = memoizeFactory(10, 10, -1)((base: number = 0): number => base + getNextInteger());
+const nextInteger2 = memoizeFactory({ maxCachedThisSize: 10, maxCachedArgsSize: 10, cacheDuration: -1 })(
+  (base: number = 0): number => base + getNextInteger()
+);
+const nextInteger3 = memoizeFactory({ cacheDuration: 200 })((base: number = 0): number => base + getNextInteger());
+const asyncNextInteger = memoize(async (base: number = 0): Promise<number> => {
+  await setTimeout(0);
+  return base + getNextInteger();
+});
 
 test.each([
   ['with', (...args: number[]) => random1.nextInteger(...args)],
@@ -40,6 +49,13 @@ test.each([
   expect(func()).toBe(func());
   expect(func(100)).toBe(func(100));
   expect(func(0)).not.toBe(func(100));
+});
+
+test('memoize async function', async () => {
+  expect(typeof (await asyncNextInteger())).toBe('number');
+  expect(await asyncNextInteger()).toBe(await asyncNextInteger());
+  expect(await asyncNextInteger(100)).toBe(await asyncNextInteger(100));
+  expect(await asyncNextInteger(0)).not.toBe(await asyncNextInteger(100));
 });
 
 test('memoize method per instance', () => {
@@ -59,7 +75,18 @@ test('memoizeFactory with 0 cacheDuration', () => {
   expect(nextInteger2(100)).not.toBe(nextInteger2(100));
 });
 
-const memoizeOneValue = memoizeFactory(Number.MAX_SAFE_INTEGER, 1);
+test('memoizeFactory with 200 cacheDuration', async () => {
+  const initial = nextInteger3();
+  expect(nextInteger3()).toBe(initial);
+  expect(nextInteger3()).toBe(initial);
+  await setTimeout(400);
+  const second = nextInteger3();
+  expect(second).not.toBe(initial);
+  expect(nextInteger3()).toBe(second);
+  expect(nextInteger3()).toBe(second);
+});
+
+const memoizeOneValue = memoizeFactory({ maxCachedThisSize: Number.MAX_SAFE_INTEGER, maxCachedArgsSize: 1 });
 class Klass {
   @memoizeOneValue
   get obj(): Record<string, string> {
