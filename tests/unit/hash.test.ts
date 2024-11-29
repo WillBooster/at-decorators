@@ -1,3 +1,5 @@
+import { test, expect } from 'vitest';
+
 import { sha3_512 } from '../../src/hash.js';
 
 test('sha3_512', () => {
