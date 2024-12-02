@@ -31,7 +31,7 @@ const random1 = new RandomChild();
 const random2 = new RandomChild(10);
 
 const nextInteger1 = memoize((base: number = 0): number => base + getNextInteger());
-const nextInteger2 = memoizeFactory({ maxCachedThisSize: 10, maxCachedArgsSize: 10, cacheDuration: -1 })(
+const nextInteger2 = memoizeFactory({ maxCachedArgsSize: 10, cacheDuration: -1 })(
   (base: number = 0): number => base + getNextInteger()
 );
 const nextInteger3 = memoizeFactory({ cacheDuration: 200 })((base: number = 0): number => base + getNextInteger());
@@ -84,7 +84,7 @@ test('memoizeFactory with 200 cacheDuration', async () => {
   expect(nextInteger3()).toBe(second);
 });
 
-const memoizeOneValue = memoizeFactory({ maxCachedThisSize: Number.MAX_SAFE_INTEGER, maxCachedArgsSize: 1 });
+const memoizeOneValue = memoizeFactory({ maxCachedArgsSize: 1 });
 class Klass {
   @memoizeOneValue
   get obj(): Record<string, string> {
