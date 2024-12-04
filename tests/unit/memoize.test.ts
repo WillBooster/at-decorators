@@ -125,21 +125,29 @@ describe('persistent cache', () => {
     cacheDuration: 200,
   })((base: number = 0): number => base + getNextInteger());
 
-  beforeEach(() => {
-    persistentStore.clear();
+  function clearCache(): void {
     for (const cache of caches) {
       cache.clear();
     }
+  }
+
+  beforeEach(() => {
+    persistentStore.clear();
+    clearCache();
   });
 
   test('should use persistent cache', () => {
     const initial = nextIntegerWithPersistence(100);
+    clearCache();
+
     expect(nextIntegerWithPersistence(100)).toBe(initial);
     expect(persistentStore.size).toBe(1);
   });
 
   test('should remove expired cache', async () => {
     const initial = nextIntegerWithPersistence(100);
+    clearCache();
+
     expect(persistentStore.size).toBe(1);
     await setTimeout(400);
     const second = nextIntegerWithPersistence(100);
@@ -150,6 +158,8 @@ describe('persistent cache', () => {
   test('should handle multiple cache entries', () => {
     const value1 = nextIntegerWithPersistence(100);
     const value2 = nextIntegerWithPersistence(200);
+    clearCache();
+
     expect(persistentStore.size).toBe(2);
     expect(nextIntegerWithPersistence(100)).toBe(value1);
     expect(nextIntegerWithPersistence(200)).toBe(value2);
@@ -166,6 +176,7 @@ describe('persistent cache', () => {
     const value1 = withSizeLimit(100);
     const value2 = withSizeLimit(200);
     const value3 = withSizeLimit(300);
+    clearCache();
 
     expect(persistentStore.size).toBe(2);
     expect(withSizeLimit(300)).toBe(value3);
