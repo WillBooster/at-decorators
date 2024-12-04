@@ -3,10 +3,8 @@ import { sha3_512 } from './hash.js';
 /**
  * A memoization decorator/function that caches the results of method/getter/function calls to improve performance.
  * This decorator/function can be applied to methods and getters in a class as a decorator, and functions without context as a function.
- * The cache size is limited by two parameters in `memoizeFactory` function: `maxCachedThisSize` (10 by default) and `maxCachedValueSize` (10 by default).
- * `maxCachedThisSize` limits the number of distinct `this` contexts that can be cached.
- * `maxCachedValueSize` limits the number of distinct return values that can be cached for each `this` context.
- * When the cache size for either parameter exceeds its limit, the oldest cached value is removed.
+ * The cache size is limited by `maxCachedArgsSize` parameter (100 by default) in `memoizeFactory` function.
+ * When the cache size exceeds its limit, the oldest cached value is removed.
  *
  * @template This The type of the `this` context within the method, getter or function.
  * @template Args The types of the arguments to the method, getter or function.
@@ -26,25 +24,31 @@ export const memoize = memoizeFactory();
  * @template Args - The types of the arguments to the method, getter or function.
  * @template Return - The return type of the method, getter or function.
  * @param {Object} options - The options for the memoize function.
- * @param {number} [options.maxCachedThisSize=10] - The maximum number of distinct `this` contexts that can be cached.
- * @param {number} [options.maxCachedArgsSize=100] - The maximum number of distinct return values that can be cached for each `this` context.
+ * @param {number} [options.maxCachedArgsSize=100] - The maximum number of distinct values that can be cached.
  * @param {number} [options.cacheDuration=Number.POSITIVE_INFINITY] - The maximum number of milliseconds that a cached value is valid.
- * @param {Function} [options.calcKey] - A function to calculate the cache key for a given set of arguments. Defaults to hashing the stringified arguments.
+ * @param {Function} [options.calcHash] - A function to calculate the hash for a given context and arguments. Defaults to hashing the stringified context and arguments.
  * @param {Map<unknown, unknown>[]} [options.caches] - An array of maps to store cached values.
+ * @param {Function} [options.persistCache] - A function to store cached values persistently.
+ * @param {Function} [options.tryReadingCache] - A function to try reading cached values from persistent storage.
+ * @param {Function} [options.removeCache] - A function to remove cached values.
  * @returns {Function} A new memoize function with the specified cache sizes.
  */
 export function memoizeFactory({
   cacheDuration = Number.POSITIVE_INFINITY,
   caches,
-  calcKey = (args) => sha3_512(JSON.stringify(args)),
+  calcHash = (thisArg: unknown, args: unknown) => sha3_512(JSON.stringify([thisArg, args])),
   maxCachedArgsSize = 100,
-  maxCachedThisSize = 10,
+  persistCache,
+  removeCache,
+  tryReadingCache,
 }: {
   maxCachedArgsSize?: number;
-  maxCachedThisSize?: number;
   cacheDuration?: number;
-  calcKey?: (args: unknown) => string;
+  calcHash?: (thisArg: unknown, args: unknown) => string;
   caches?: Map<unknown, unknown>[];
+  persistCache?: (hash: string, currentTime: number, value: unknown) => void;
+  tryReadingCache?: (hash: string) => [number, unknown] | undefined;
+  removeCache?: (hash: string) => void;
 } = {}) {
   return function memoize<This, Args extends unknown[], Return>(
     target: ((this: This, ...args: Args) => Return) | ((...args: Args) => Return) | keyof This,
@@ -53,69 +57,100 @@ export function memoizeFactory({
       | ClassGetterDecoratorContext<This, Return>
   ): (this: This, ...args: Args) => Return {
     if (context?.kind === 'getter') {
-      const cacheByThis = new Map<This, [Return, number]>();
-      caches?.push(cacheByThis);
+      const cache = new Map<string, [Return, number]>();
+      caches?.push(cache);
       return function (this: This): Return {
         console.log(`Entering getter ${String(context.name)}.`);
 
+        const key = calcHash(this, []);
         const now = Date.now();
-        if (cacheByThis.has(this)) {
-          const [cache, cachedAt] = cacheByThis.get(this) as [Return, number];
+
+        // Check in-memory cache first
+        if (cache.has(key)) {
+          const [cachedValue, cachedAt] = cache.get(key) as [Return, number];
           if (now - cachedAt <= cacheDuration) {
             console.log(`Exiting getter ${String(context.name)}.`);
-            return cache;
+            return cachedValue;
           }
+
+          cache.delete(key);
+          removeCache?.(key);
+        }
+
+        // Try reading from persistent cache
+        const persistentCache = tryReadingCache?.(key);
+        if (persistentCache) {
+          const [cachedAt, cachedValue] = persistentCache;
+          if (now - cachedAt <= cacheDuration) {
+            cache.set(key, [cachedValue as Return, cachedAt]);
+            console.log(`Exiting getter ${String(context.name)}.`);
+            return cachedValue as Return;
+          }
+
+          removeCache?.(key);
         }
 
         const result = (target as (this: This) => Return).call(this);
-        if (cacheByThis.size >= maxCachedThisSize) {
-          const oldestKey = cacheByThis.keys().next().value;
-          cacheByThis.delete(oldestKey as This);
+        if (cache.size >= maxCachedArgsSize) {
+          const oldestKey = cache.keys().next().value as string;
+          cache.delete(oldestKey);
+          removeCache?.(oldestKey);
         }
-        cacheByThis.set(this, [result, now]);
+        cache.set(key, [result, now]);
+        persistCache?.(key, now, result);
+
         console.log(`Exiting getter ${String(context.name)}.`);
         return result as Return;
       };
     } else {
-      const cacheByThis = new Map<This, Map<string, [Return, number]>>();
-      caches?.push(cacheByThis);
+      const cache = new Map<string, [Return, number]>();
+      caches?.push(cache);
 
       return function (this: This, ...args: Args): Return {
-        console.log(`Entering ${context ? `method ${String(context.name)}` : 'function'}(${calcKey(args)}).`);
+        console.log(`Entering ${context ? `method ${String(context.name)}` : 'function'}(${calcHash(this, args)}).`);
 
-        const key = calcKey(args);
-
-        // If `target` is a function outside a class, `this` is undefined.
-        let cacheByArgs = cacheByThis.get(this);
+        const key = calcHash(this, args);
         const now = Date.now();
-        if (cacheByArgs) {
-          if (cacheByArgs.has(key)) {
-            const [cache, cachedAt] = cacheByArgs.get(key) as [Return, number];
-            if (now - cachedAt <= cacheDuration) {
-              console.log(`Exiting ${context ? `method ${String(context.name)}` : 'function'}.`);
-              return cache;
-            }
+
+        // Check in-memory cache first
+        if (cache.has(key)) {
+          const [cachedValue, cachedAt] = cache.get(key) as [Return, number];
+          if (now - cachedAt <= cacheDuration) {
+            console.log(`Exiting ${context ? `method ${String(context.name)}` : 'function'}.`);
+            return cachedValue;
           }
-        } else {
-          cacheByArgs = new Map<string, [Return, number]>();
-          if (cacheByThis.size >= maxCachedThisSize) {
-            const oldestKey = cacheByThis.keys().next().value;
-            cacheByThis.delete(oldestKey as This);
+
+          cache.delete(key);
+          removeCache?.(key);
+        }
+
+        // Try reading from persistent cache
+        const persistentCache = tryReadingCache?.(key);
+        if (persistentCache) {
+          const [cachedAt, cachedValue] = persistentCache;
+          if (now - cachedAt <= cacheDuration) {
+            cache.set(key, [cachedValue as Return, cachedAt]);
+            console.log(`Exiting ${context ? `method ${String(context.name)}` : 'function'}.`);
+            return cachedValue as Return;
           }
-          cacheByThis.set(this, cacheByArgs);
+
+          removeCache?.(key);
         }
 
         const result = context
           ? (target as (this: This, ...args: Args) => Return).call(this, ...args)
           : (target as (...args: Args) => Return)(...args);
-        if (cacheByArgs.size >= maxCachedArgsSize) {
-          const oldestKey = cacheByArgs.keys().next().value;
-          cacheByArgs.delete(oldestKey as string);
+
+        if (cache.size >= maxCachedArgsSize) {
+          const oldestKey = cache.keys().next().value as string;
+          cache.delete(oldestKey);
+          removeCache?.(oldestKey);
         }
-        cacheByArgs.set(key, [result, now]);
+        cache.set(key, [result, now]);
+        persistCache?.(key, now, result);
 
         console.log(`Exiting ${context ? `method ${String(context.name)}` : 'function'}.`);
-        return result as Return;
+        return result;
       };
     }
   };
