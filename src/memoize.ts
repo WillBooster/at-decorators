@@ -28,6 +28,9 @@ export const memoize = memoizeFactory();
  * @param {number} [options.cacheDuration=Number.POSITIVE_INFINITY] - The maximum number of milliseconds that a cached value is valid.
  * @param {Function} [options.calcHash] - A function to calculate the hash for a given context and arguments. Defaults to hashing the stringified context and arguments.
  * @param {Map<unknown, unknown>[]} [options.caches] - An array of maps to store cached values.
+ * @param {Function} [options.persistCache] - A function to store cached values persistently.
+ * @param {Function} [options.tryReadingCache] - A function to try reading cached values from persistent storage.
+ * @param {Function} [options.removeCache] - A function to remove cached values.
  * @returns {Function} A new memoize function with the specified cache sizes.
  */
 export function memoizeFactory({
@@ -35,11 +38,17 @@ export function memoizeFactory({
   caches,
   calcHash = (thisArg: unknown, args: unknown) => sha3_512(JSON.stringify([thisArg, args])),
   maxCachedArgsSize = 100,
+  persistCache,
+  removeCache,
+  tryReadingCache,
 }: {
   maxCachedArgsSize?: number;
   cacheDuration?: number;
   calcHash?: (thisArg: unknown, args: unknown) => string;
   caches?: Map<unknown, unknown>[];
+  persistCache?: (hash: string, currentTime: number, value: unknown) => void;
+  tryReadingCache?: (hash: string) => [number, unknown] | undefined;
+  removeCache?: (hash: string) => void;
 } = {}) {
   return function memoize<This, Args extends unknown[], Return>(
     target: ((this: This, ...args: Args) => Return) | ((...args: Args) => Return) | keyof This,
@@ -55,20 +64,41 @@ export function memoizeFactory({
 
         const key = calcHash(this, []);
         const now = Date.now();
+
+        // Check in-memory cache first
         if (cache.has(key)) {
           const [cachedValue, cachedAt] = cache.get(key) as [Return, number];
           if (now - cachedAt <= cacheDuration) {
             console.log(`Exiting getter ${String(context.name)}.`);
             return cachedValue;
           }
+
+          cache.delete(key);
+          removeCache?.(key);
+        }
+
+        // Try reading from persistent cache
+        const persistentCache = tryReadingCache?.(key);
+        if (persistentCache) {
+          const [cachedAt, cachedValue] = persistentCache;
+          if (now - cachedAt <= cacheDuration) {
+            cache.set(key, [cachedValue as Return, cachedAt]);
+            console.log(`Exiting getter ${String(context.name)}.`);
+            return cachedValue as Return;
+          }
+
+          removeCache?.(key);
         }
 
         const result = (target as (this: This) => Return).call(this);
         if (cache.size >= maxCachedArgsSize) {
           const oldestKey = cache.keys().next().value as string;
           cache.delete(oldestKey);
+          removeCache?.(oldestKey);
         }
         cache.set(key, [result, now]);
+        persistCache?.(key, now, result);
+
         console.log(`Exiting getter ${String(context.name)}.`);
         return result as Return;
       };
@@ -82,12 +112,29 @@ export function memoizeFactory({
         const key = calcHash(this, args);
         const now = Date.now();
 
+        // Check in-memory cache first
         if (cache.has(key)) {
           const [cachedValue, cachedAt] = cache.get(key) as [Return, number];
           if (now - cachedAt <= cacheDuration) {
             console.log(`Exiting ${context ? `method ${String(context.name)}` : 'function'}.`);
             return cachedValue;
           }
+
+          cache.delete(key);
+          removeCache?.(key);
+        }
+
+        // Try reading from persistent cache
+        const persistentCache = tryReadingCache?.(key);
+        if (persistentCache) {
+          const [cachedAt, cachedValue] = persistentCache;
+          if (now - cachedAt <= cacheDuration) {
+            cache.set(key, [cachedValue as Return, cachedAt]);
+            console.log(`Exiting ${context ? `method ${String(context.name)}` : 'function'}.`);
+            return cachedValue as Return;
+          }
+
+          removeCache?.(key);
         }
 
         const result = context
@@ -97,11 +144,13 @@ export function memoizeFactory({
         if (cache.size >= maxCachedArgsSize) {
           const oldestKey = cache.keys().next().value as string;
           cache.delete(oldestKey);
+          removeCache?.(oldestKey);
         }
         cache.set(key, [result, now]);
+        persistCache?.(key, now, result);
 
         console.log(`Exiting ${context ? `method ${String(context.name)}` : 'function'}.`);
-        return result as Return;
+        return result;
       };
     }
   };
