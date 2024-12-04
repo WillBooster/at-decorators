@@ -116,7 +116,9 @@ describe('persistent cache', () => {
     persistentStore.delete(hash);
   }
 
+  const caches: Map<unknown, unknown>[] = [];
   const nextIntegerWithPersistence = memoizeFactory({
+    caches,
     persistCache,
     tryReadingCache,
     removeCache,
@@ -125,6 +127,9 @@ describe('persistent cache', () => {
 
   beforeEach(() => {
     persistentStore.clear();
+    for (const cache of caches) {
+      cache.clear();
+    }
   });
 
   test('should use persistent cache', () => {
