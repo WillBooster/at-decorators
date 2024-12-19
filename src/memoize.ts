@@ -74,30 +74,57 @@ export function memoizeFactory({
           }
 
           cache.delete(key);
-          removeCache?.(key);
+          try {
+            const promise = removeCache?.(key) as unknown;
+            if (promise instanceof Promise) promise.catch(noop);
+          } catch {
+            // do nothing.
+          }
         }
 
         // Try reading from persistent cache
-        const persistentCache = tryReadingCache?.(key);
-        if (persistentCache) {
-          const [cachedAt, cachedValue] = persistentCache;
-          if (now - cachedAt <= cacheDuration) {
-            cache.set(key, [cachedValue as Return, cachedAt]);
-            console.log(`Exiting getter ${String(context.name)}.`);
-            return cachedValue as Return;
-          }
+        try {
+          const persistentCache = tryReadingCache?.(key);
+          if (persistentCache) {
+            const [cachedAt, cachedValue] = persistentCache;
+            if (now - cachedAt <= cacheDuration) {
+              cache.set(key, [cachedValue as Return, cachedAt]);
+              console.log(`Exiting getter ${String(context.name)}.`);
+              return cachedValue as Return;
+            }
 
-          removeCache?.(key);
+            const promise = removeCache?.(key) as unknown;
+            if (promise instanceof Promise) promise.catch(noop);
+          }
+        } catch {
+          // do nothing.
         }
 
         const result = (target as (this: This) => Return).call(this);
         if (cache.size >= maxCachedArgsSize) {
           const oldestKey = cache.keys().next().value as string;
           cache.delete(oldestKey);
-          removeCache?.(oldestKey);
+          try {
+            const promise = removeCache?.(oldestKey) as unknown;
+            if (promise instanceof Promise) promise.catch(noop);
+          } catch {
+            // do nothing.
+          }
         }
         cache.set(key, [result, now]);
-        persistCache?.(key, now, result);
+        try {
+          if (result instanceof Promise) {
+            void (async () => {
+              const promise = persistCache?.(key, now, await result) as unknown;
+              if (promise instanceof Promise) promise.catch(noop);
+            });
+          } else {
+            const promise = persistCache?.(key, now, result) as unknown;
+            if (promise instanceof Promise) promise.catch(noop);
+          }
+        } catch {
+          // do nothing.
+        }
 
         console.log(`Exiting getter ${String(context.name)}.`);
         return result as Return;
@@ -121,20 +148,30 @@ export function memoizeFactory({
           }
 
           cache.delete(key);
-          removeCache?.(key);
+          try {
+            const promise = removeCache?.(key) as unknown;
+            if (promise instanceof Promise) promise.catch(noop);
+          } catch {
+            // do nothing.
+          }
         }
 
         // Try reading from persistent cache
-        const persistentCache = tryReadingCache?.(key);
-        if (persistentCache) {
-          const [cachedAt, cachedValue] = persistentCache;
-          if (now - cachedAt <= cacheDuration) {
-            cache.set(key, [cachedValue as Return, cachedAt]);
-            console.log(`Exiting ${context ? `method ${String(context.name)}` : 'function'}.`);
-            return cachedValue as Return;
-          }
+        try {
+          const persistentCache = tryReadingCache?.(key);
+          if (persistentCache) {
+            const [cachedAt, cachedValue] = persistentCache;
+            if (now - cachedAt <= cacheDuration) {
+              cache.set(key, [cachedValue as Return, cachedAt]);
+              console.log(`Exiting ${context ? `method ${String(context.name)}` : 'function'}.`);
+              return cachedValue as Return;
+            }
 
-          removeCache?.(key);
+            const promise = removeCache?.(key) as unknown;
+            if (promise instanceof Promise) promise.catch(noop);
+          }
+        } catch {
+          // do nothing.
         }
 
         const result = context
@@ -144,10 +181,27 @@ export function memoizeFactory({
         if (cache.size >= maxCachedArgsSize) {
           const oldestKey = cache.keys().next().value as string;
           cache.delete(oldestKey);
-          removeCache?.(oldestKey);
+          try {
+            const promise = removeCache?.(oldestKey) as unknown;
+            if (promise instanceof Promise) promise.catch(noop);
+          } catch {
+            // do nothing.
+          }
         }
         cache.set(key, [result, now]);
-        persistCache?.(key, now, result);
+        try {
+          if (result instanceof Promise) {
+            void (async () => {
+              const promise = persistCache?.(key, now, await result) as unknown;
+              if (promise instanceof Promise) promise.catch(noop);
+            });
+          } else {
+            const promise = persistCache?.(key, now, result) as unknown;
+            if (promise instanceof Promise) promise.catch(noop);
+          }
+        } catch {
+          // do nothing.
+        }
 
         console.log(`Exiting ${context ? `method ${String(context.name)}` : 'function'}.`);
         return result;
@@ -155,3 +209,5 @@ export function memoizeFactory({
     }
   };
 }
+
+const noop = (): void => {};

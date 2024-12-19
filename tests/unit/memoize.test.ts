@@ -57,6 +57,15 @@ describe('memory cache', () => {
     expect(await asyncNextInteger(0)).not.toBe(await asyncNextInteger(100));
   });
 
+  test('memoize async function with exception', async () => {
+    const asyncErrorFunction = memoize(async () => {
+      await setTimeout(0);
+      throw new Error('Test error');
+    });
+
+    await expect(asyncErrorFunction()).rejects.toThrow('Test error');
+  });
+
   test('memoize method per instance', () => {
     expect(random1.nextInteger()).not.toBe(random2.nextInteger());
     expect(random1.nextInteger(100)).not.toBe(random2.nextInteger(100));
@@ -182,5 +191,51 @@ describe('persistent cache', () => {
     expect(withSizeLimit(300)).toBe(value3);
     expect(withSizeLimit(200)).toBe(value2);
     expect(withSizeLimit(100)).not.toBe(value1);
+  });
+});
+
+function errorThrowingPersistCache(): never {
+  throw new Error('Persist error');
+}
+
+function errorThrowingTryReadingCache(): never {
+  throw new Error('Read error');
+}
+
+function errorThrowingRemoveCache(): never {
+  throw new Error('Remove error');
+}
+
+describe('error handling in cache operations', () => {
+  const nextIntegerWithErrorHandling = memoizeFactory({
+    persistCache: errorThrowingPersistCache,
+    tryReadingCache: errorThrowingTryReadingCache,
+    removeCache: errorThrowingRemoveCache,
+    cacheDuration: 200,
+  })((base: number = 0): number => base + getNextInteger());
+
+  test('should ignore errors in persistCache, tryReadingCache and removeCache', () => {
+    expect(() => nextIntegerWithErrorHandling(100)).not.toThrow();
+  });
+});
+
+async function asyncErrorThrowingPersistCache(): Promise<never> {
+  throw new Error('Persist error');
+}
+
+async function asyncErrorThrowingRemoveCache(): Promise<never> {
+  throw new Error('Remove error');
+}
+
+describe('async error handling in cache operations', () => {
+  const nextIntegerWithAsyncErrorHandling = memoizeFactory({
+    persistCache: asyncErrorThrowingPersistCache,
+    tryReadingCache: errorThrowingTryReadingCache,
+    removeCache: asyncErrorThrowingRemoveCache,
+    cacheDuration: 200,
+  })((base: number = 0): number => base + getNextInteger());
+
+  test('should ignore errors in async persistCache, non-async tryReadingCache and async removeCache', async () => {
+    expect(() => nextIntegerWithAsyncErrorHandling(100)).not.toThrow();
   });
 });

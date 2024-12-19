@@ -85,3 +85,12 @@ test('memoizeFactory with 200 cacheDuration', async () => {
   expect(nextInteger3()).toBe(second);
   expect(nextInteger3()).toBe(second);
 });
+
+test('memoizeOne async function with exception', async () => {
+  const asyncErrorFunction = memoizeOne(async () => {
+    await setTimeout(0);
+    throw new Error('Test error');
+  });
+
+  await expect(asyncErrorFunction()).rejects.toThrow('Test error');
+});
