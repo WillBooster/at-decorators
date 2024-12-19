@@ -112,18 +112,22 @@ export function memoizeFactory({
           }
         }
         cache.set(key, [result, now]);
-        try {
-          if (result instanceof Promise) {
-            void (async () => {
-              const promise = persistCache?.(key, now, await result) as unknown;
+        if (result instanceof Promise) {
+          void (async () => {
+            try {
+              const promise = persistCache?.(key, now, result) as unknown;
               if (promise instanceof Promise) promise.catch(noop);
-            });
-          } else {
+            } catch {
+              // do nothing.
+            }
+          });
+        } else {
+          try {
             const promise = persistCache?.(key, now, result) as unknown;
             if (promise instanceof Promise) promise.catch(noop);
+          } catch {
+            // do nothing.
           }
-        } catch {
-          // do nothing.
         }
 
         console.log(`Exiting getter ${String(context.name)}.`);
@@ -189,18 +193,22 @@ export function memoizeFactory({
           }
         }
         cache.set(key, [result, now]);
-        try {
-          if (result instanceof Promise) {
-            void (async () => {
-              const promise = persistCache?.(key, now, await result) as unknown;
+        if (result instanceof Promise) {
+          void (async () => {
+            try {
+              const promise = persistCache?.(key, now, result) as unknown;
               if (promise instanceof Promise) promise.catch(noop);
-            });
-          } else {
+            } catch {
+              // do nothing.
+            }
+          });
+        } else {
+          try {
             const promise = persistCache?.(key, now, result) as unknown;
             if (promise instanceof Promise) promise.catch(noop);
+          } catch {
+            // do nothing.
           }
-        } catch {
-          // do nothing.
         }
 
         console.log(`Exiting ${context ? `method ${String(context.name)}` : 'function'}.`);
