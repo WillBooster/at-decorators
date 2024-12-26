@@ -18,6 +18,11 @@ describe('memory cache', () => {
       return base + getNextInteger();
     }
 
+    @memoize
+    nextString(base = 0): string {
+      return String(base + getNextInteger());
+    }
+
     abstract get count(): number;
   }
 
@@ -64,6 +69,15 @@ describe('memory cache', () => {
     });
 
     await expect(asyncErrorFunction()).rejects.toThrow('Test error');
+  });
+
+  test('memoize method per method', () => {
+    expect(random1.nextInteger()).toBe(random1.nextInteger());
+    expect(random1.nextInteger(100)).toBe(random1.nextInteger(100));
+    expect(random1.nextString()).toBe(random1.nextString());
+    expect(random1.nextString(100)).toBe(random1.nextString(100));
+    expect(random1.nextInteger()).not.toBe(random1.nextString());
+    expect(random1.nextInteger(100)).not.toBe(random1.nextString(100));
   });
 
   test('memoize method per instance', () => {
@@ -126,13 +140,15 @@ describe('persistent cache', () => {
   }
 
   const caches: Map<unknown, unknown>[] = [];
-  const nextIntegerWithPersistence = memoizeFactory({
+  const memoize = memoizeFactory({
     caches,
     persistCache,
     tryReadingCache,
     removeCache,
     cacheDuration: 200,
-  })((base: number = 0): number => base + getNextInteger());
+  });
+  const nextIntegerWithPersistence = memoize((base: number = 0): number => base + getNextInteger());
+  const nextIntegerWithPersistence2 = memoize((base: number = 0): number => base + getNextInteger());
 
   function clearCache(): void {
     for (const cache of caches) {
@@ -145,15 +161,18 @@ describe('persistent cache', () => {
     clearCache();
   });
 
-  test('should use persistent cache', () => {
+  test('persist cache per method', () => {
     const initial = nextIntegerWithPersistence(100);
     clearCache();
 
     expect(nextIntegerWithPersistence(100)).toBe(initial);
     expect(persistentStore.size).toBe(1);
+
+    expect(nextIntegerWithPersistence2(100)).not.toBe(initial);
+    expect(persistentStore.size).toBe(2);
   });
 
-  test('should remove expired cache', async () => {
+  test('remove expired cache', async () => {
     const initial = nextIntegerWithPersistence(100);
     clearCache();
 
@@ -164,7 +183,7 @@ describe('persistent cache', () => {
     expect(persistentStore.size).toBe(1);
   });
 
-  test('should handle multiple cache entries', () => {
+  test('handle multiple cache entries', () => {
     const value1 = nextIntegerWithPersistence(100);
     const value2 = nextIntegerWithPersistence(200);
     clearCache();
@@ -174,7 +193,7 @@ describe('persistent cache', () => {
     expect(nextIntegerWithPersistence(200)).toBe(value2);
   });
 
-  test('should remove oldest cache entry when maxCachedArgsSize is reached', () => {
+  test('remove oldest cache entry when maxCachedArgsSize is reached', () => {
     const withSizeLimit = memoizeFactory({
       persistCache,
       tryReadingCache,
@@ -214,7 +233,7 @@ describe('error handling in cache operations', () => {
     cacheDuration: 200,
   })((base: number = 0): number => base + getNextInteger());
 
-  test('should ignore errors in persistCache, tryReadingCache and removeCache', () => {
+  test('ignore errors in persistCache, tryReadingCache and removeCache', () => {
     expect(() => nextIntegerWithErrorHandling(100)).not.toThrow();
   });
 });
@@ -235,7 +254,7 @@ describe('async error handling in cache operations', () => {
     cacheDuration: 200,
   })((base: number = 0): number => base + getNextInteger());
 
-  test('should ignore errors in async persistCache, non-async tryReadingCache and async removeCache', async () => {
+  test('ignore errors in async persistCache, non-async tryReadingCache and async removeCache', async () => {
     expect(() => nextIntegerWithAsyncErrorHandling(100)).not.toThrow();
   });
 });

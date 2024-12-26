@@ -1,5 +1,7 @@
 import { sha3_512 } from './hash.js';
 
+let globalCounter = 0;
+
 /**
  * A memoization decorator/function that caches the results of method/getter/function calls to improve performance.
  * This decorator/function can be applied to methods and getters in a class as a decorator, and functions without context as a function.
@@ -36,7 +38,7 @@ export const memoize = memoizeFactory();
 export function memoizeFactory({
   cacheDuration = Number.POSITIVE_INFINITY,
   caches,
-  calcHash = (thisArg: unknown, args: unknown) => sha3_512(JSON.stringify([thisArg, args])),
+  calcHash = (thisArg: unknown, counter: number, args: unknown) => sha3_512(JSON.stringify([thisArg, counter, args])),
   maxCachedArgsSize = 100,
   persistCache,
   removeCache,
@@ -44,7 +46,7 @@ export function memoizeFactory({
 }: {
   maxCachedArgsSize?: number;
   cacheDuration?: number;
-  calcHash?: (thisArg: unknown, args: unknown) => string;
+  calcHash?: (thisArg: unknown, counter: number, args: unknown) => string;
   caches?: Map<unknown, unknown>[];
   persistCache?: (hash: string, currentTime: number, value: unknown) => void;
   tryReadingCache?: (hash: string) => [number, unknown] | undefined;
@@ -56,13 +58,14 @@ export function memoizeFactory({
       | ClassMethodDecoratorContext<This, (this: This, ...args: Args) => Return>
       | ClassGetterDecoratorContext<This, Return>
   ): (this: This, ...args: Args) => Return {
+    const counter = globalCounter++;
     if (context?.kind === 'getter') {
       const cache = new Map<string, [Return, number]>();
       caches?.push(cache);
       return function (this: This): Return {
         console.log(`Entering getter ${String(context.name)}.`);
 
-        const key = calcHash(this, []);
+        const key = calcHash(this, counter, []);
         const now = Date.now();
 
         // Check in-memory cache first
@@ -138,9 +141,11 @@ export function memoizeFactory({
       caches?.push(cache);
 
       return function (this: This, ...args: Args): Return {
-        console.log(`Entering ${context ? `method ${String(context.name)}` : 'function'}(${calcHash(this, args)}).`);
+        console.log(
+          `Entering ${context ? `method ${String(context.name)}` : 'function'}(${calcHash(this, counter, args)}).`
+        );
 
-        const key = calcHash(this, args);
+        const key = calcHash(this, counter, args);
         const now = Date.now();
 
         // Check in-memory cache first
