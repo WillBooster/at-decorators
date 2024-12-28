@@ -65,20 +65,20 @@ export function memoizeFactory({
       return function (this: This): Return {
         console.log(`Entering getter ${String(context.name)}.`);
 
-        const key = calcHash(this, counter, []);
+        const hash = calcHash(this, counter, []);
         const now = Date.now();
 
         // Check in-memory cache first
-        if (cache.has(key)) {
-          const [cachedValue, cachedAt] = cache.get(key) as [Return, number];
+        if (cache.has(hash)) {
+          const [cachedValue, cachedAt] = cache.get(hash) as [Return, number];
           if (now - cachedAt <= cacheDuration) {
             console.log(`Exiting getter ${String(context.name)}.`);
             return cachedValue;
           }
 
-          cache.delete(key);
+          cache.delete(hash);
           try {
-            const promise = removeCache?.(key) as unknown;
+            const promise = removeCache?.(hash) as unknown;
             if (promise instanceof Promise) promise.catch(noop);
           } catch {
             // do nothing.
@@ -87,16 +87,16 @@ export function memoizeFactory({
 
         // Try reading from persistent cache
         try {
-          const persistentCache = tryReadingCache?.(key);
+          const persistentCache = tryReadingCache?.(hash);
           if (persistentCache) {
             const [cachedAt, cachedValue] = persistentCache;
             if (now - cachedAt <= cacheDuration) {
-              cache.set(key, [cachedValue as Return, cachedAt]);
+              cache.set(hash, [cachedValue as Return, cachedAt]);
               console.log(`Exiting getter ${String(context.name)}.`);
               return cachedValue as Return;
             }
 
-            const promise = removeCache?.(key) as unknown;
+            const promise = removeCache?.(hash) as unknown;
             if (promise instanceof Promise) promise.catch(noop);
           }
         } catch {
@@ -114,11 +114,11 @@ export function memoizeFactory({
             // do nothing.
           }
         }
-        cache.set(key, [result, now]);
+        cache.set(hash, [result, now]);
         if (result instanceof Promise) {
           void (async () => {
             try {
-              const promise = persistCache?.(key, now, result) as unknown;
+              const promise = persistCache?.(hash, now, result) as unknown;
               if (promise instanceof Promise) promise.catch(noop);
             } catch {
               // do nothing.
@@ -126,7 +126,7 @@ export function memoizeFactory({
           });
         } else {
           try {
-            const promise = persistCache?.(key, now, result) as unknown;
+            const promise = persistCache?.(hash, now, result) as unknown;
             if (promise instanceof Promise) promise.catch(noop);
           } catch {
             // do nothing.
@@ -145,20 +145,20 @@ export function memoizeFactory({
           `Entering ${context ? `method ${String(context.name)}` : 'function'}(${calcHash(this, counter, args)}).`
         );
 
-        const key = calcHash(this, counter, args);
+        const hash = calcHash(this, counter, args);
         const now = Date.now();
 
         // Check in-memory cache first
-        if (cache.has(key)) {
-          const [cachedValue, cachedAt] = cache.get(key) as [Return, number];
+        if (cache.has(hash)) {
+          const [cachedValue, cachedAt] = cache.get(hash) as [Return, number];
           if (now - cachedAt <= cacheDuration) {
             console.log(`Exiting ${context ? `method ${String(context.name)}` : 'function'}.`);
             return cachedValue;
           }
 
-          cache.delete(key);
+          cache.delete(hash);
           try {
-            const promise = removeCache?.(key) as unknown;
+            const promise = removeCache?.(hash) as unknown;
             if (promise instanceof Promise) promise.catch(noop);
           } catch {
             // do nothing.
@@ -167,16 +167,16 @@ export function memoizeFactory({
 
         // Try reading from persistent cache
         try {
-          const persistentCache = tryReadingCache?.(key);
+          const persistentCache = tryReadingCache?.(hash);
           if (persistentCache) {
             const [cachedAt, cachedValue] = persistentCache;
             if (now - cachedAt <= cacheDuration) {
-              cache.set(key, [cachedValue as Return, cachedAt]);
+              cache.set(hash, [cachedValue as Return, cachedAt]);
               console.log(`Exiting ${context ? `method ${String(context.name)}` : 'function'}.`);
               return cachedValue as Return;
             }
 
-            const promise = removeCache?.(key) as unknown;
+            const promise = removeCache?.(hash) as unknown;
             if (promise instanceof Promise) promise.catch(noop);
           }
         } catch {
@@ -197,11 +197,11 @@ export function memoizeFactory({
             // do nothing.
           }
         }
-        cache.set(key, [result, now]);
+        cache.set(hash, [result, now]);
         if (result instanceof Promise) {
           void (async () => {
             try {
-              const promise = persistCache?.(key, now, result) as unknown;
+              const promise = persistCache?.(hash, now, result) as unknown;
               if (promise instanceof Promise) promise.catch(noop);
             } catch {
               // do nothing.
@@ -209,7 +209,7 @@ export function memoizeFactory({
           });
         } else {
           try {
-            const promise = persistCache?.(key, now, result) as unknown;
+            const promise = persistCache?.(hash, now, result) as unknown;
             if (promise instanceof Promise) promise.catch(noop);
           } catch {
             // do nothing.
