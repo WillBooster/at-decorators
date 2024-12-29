@@ -19,31 +19,35 @@ export const memoizeOne = memoizeOneFactory();
  *
  * @param {Object} options - The options for the memoizeOne function.
  * @param {number} [options.cacheDuration=Number.POSITIVE_INFINITY] - The maximum number of milliseconds that a cached value is valid.
+ * @param {Function} [options.calcHash=() => ''] - A function to calculate the hash for a given context and arguments. Defaults to returning an empty string.
  *
  * @returns {Function} A memoizeOne function with the specified cache duration.
  * @template This - The type of the `this` context within the method, getter or function.
  * @template Args - The types of the arguments to the method, getter or function.
  * @template Return - The return type of the method, getter or function.
  */
-export function memoizeOneFactory({ cacheDuration = Number.POSITIVE_INFINITY }: { cacheDuration?: number } = {}) {
+export function memoizeOneFactory({
+  cacheDuration = Number.POSITIVE_INFINITY,
+  calcHash = () => '',
+}: { cacheDuration?: number; calcHash?: (self: unknown, args: unknown) => string } = {}) {
   return function <This, Args extends unknown[], Return>(
     target: ((this: This, ...args: Args) => Return) | ((...args: Args) => Return) | keyof This,
     context?:
       | ClassMethodDecoratorContext<This, (this: This, ...args: Args) => Return>
       | ClassGetterDecoratorContext<This, Return>
   ): (this: This, ...args: Args) => Return {
-    let lastThis: This;
     let lastCache: Return;
     let lastCachedAt: number;
+    let lastHash: string;
 
     if (context?.kind === 'getter') {
       return function (this: This): Return {
         console.log(`Entering getter ${String(context.name)}.`);
 
+        const hash = calcHash(this, []);
         const now = Date.now();
-        if (lastThis !== this || now - lastCachedAt > cacheDuration) {
-          // eslint-disable-next-line
-          lastThis = this;
+        if (lastHash !== hash || now - lastCachedAt > cacheDuration) {
+          lastHash = hash;
           lastCache = (target as (this: This) => Return).call(this);
           lastCachedAt = now;
         }
@@ -53,17 +57,13 @@ export function memoizeOneFactory({ cacheDuration = Number.POSITIVE_INFINITY }: 
       };
     }
 
-    let lastCacheKey: string;
-
     return function (this: This, ...args: Args): Return {
       console.log(`Entering ${context ? `method ${String(context.name)}` : 'function'}(${JSON.stringify(args)}).`);
 
-      const key = JSON.stringify(args);
+      const hash = calcHash(this, args);
       const now = Date.now();
-      if (lastThis !== this || lastCacheKey !== key || now - lastCachedAt > cacheDuration) {
-        // eslint-disable-next-line
-        lastThis = this;
-        lastCacheKey = key;
+      if (lastHash !== hash || now - lastCachedAt > cacheDuration) {
+        lastHash = hash;
         lastCache = context
           ? (target as (this: This, ...args: Args) => Return).call(this, ...args)
           : (target as (...args: Args) => Return)(...args);

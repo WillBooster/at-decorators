@@ -38,7 +38,7 @@ export const memoize = memoizeFactory();
 export function memoizeFactory({
   cacheDuration = Number.POSITIVE_INFINITY,
   caches,
-  calcHash = (thisArg: unknown, counter: number, args: unknown) => sha3_512(JSON.stringify([thisArg, counter, args])),
+  calcHash = (self, counter, args) => sha3_512(JSON.stringify([self, counter, args])),
   maxCachedArgsSize = 100,
   persistCache,
   removeCache,
@@ -46,8 +46,8 @@ export function memoizeFactory({
 }: {
   maxCachedArgsSize?: number;
   cacheDuration?: number;
-  calcHash?: (thisArg: unknown, counter: number, args: unknown) => string;
-  caches?: Map<unknown, unknown>[];
+  calcHash?: (self: unknown, counter: number, args: unknown) => string;
+  caches?: Map<string, [unknown, number]>[];
   persistCache?: (hash: string, currentTime: number, value: unknown) => void;
   tryReadingCache?: (hash: string) => [number, unknown] | undefined;
   removeCache?: (hash: string) => void;

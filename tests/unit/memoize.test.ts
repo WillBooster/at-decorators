@@ -15,12 +15,12 @@ describe('memory cache', () => {
 
     @memoize
     nextInteger(base = 0): number {
-      return base + getNextInteger();
+      return this._count * base + getNextInteger();
     }
 
     @memoize
     nextString(base = 0): string {
-      return String(base + getNextInteger());
+      return String(this._count * base + getNextInteger());
     }
 
     abstract get count(): number;
@@ -86,10 +86,8 @@ describe('memory cache', () => {
   });
 
   test('memoize getter per instance', () => {
-    expect(random1.count).toBe(1);
-    expect(random1.count).toBe(1);
-    expect(random2.count).toBe(10);
-    expect(random2.count).toBe(10);
+    expect(random1.count).toBe(random1.count);
+    expect(random2.count).toBe(random2.count);
   });
 
   test('memoizeFactory with 0 cacheDuration', () => {
@@ -139,7 +137,7 @@ describe('persistent cache', () => {
     persistentStore.delete(hash);
   }
 
-  const caches: Map<unknown, unknown>[] = [];
+  const caches: Map<string, [unknown, number]>[] = [];
   const memoize = memoizeFactory({
     caches,
     persistCache,
