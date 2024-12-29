@@ -80,9 +80,7 @@ export function memoizeFactory({
       caches?.push(cache);
 
       return function (this: This, ...args: Args): Return {
-        console.log(
-          `Entering ${context ? `method ${String(context.name)}` : 'function'}(${calcHash(this, args)}).`
-        );
+        console.log(`Entering ${context ? `method ${String(context.name)}` : 'function'}(${calcHash(this, args)}).`);
 
         const hash = calcHash(this, args);
         const now = Date.now();
