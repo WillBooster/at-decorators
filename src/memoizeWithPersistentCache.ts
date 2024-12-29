@@ -33,7 +33,10 @@ export function memoizeWithPersistentCacheFactory({
   tryReadingCache: (persistentKey: string, hash: string) => [number, unknown] | undefined;
   removeCache: (persistentKey: string, hash: string) => void;
 }) {
-  return function<This, Args extends unknown[], Return>(persistentKey: string): (
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return function <This, Args extends any[], Return>(
+    persistentKey: string
+  ): (
     target: ((this: This, ...args: Args) => Return) | ((...args: Args) => Return) | keyof This,
     context?:
       | ClassMethodDecoratorContext<This, (this: This, ...args: Args) => Return>
@@ -126,10 +129,8 @@ export function memoizeWithPersistentCacheFactory({
         const cache = new Map<string, [Return, number]>();
         caches?.push(cache);
 
-        return function (this: This, ...args: Args): Return {
-          console.log(
-            `Entering ${context ? `method ${String(context.name)}` : 'function'}(${calcHash(this, args)}).`
-          );
+        return function (this: This, ...args: { [K in keyof Args]: Args[K] }): Return {
+          console.log(`Entering ${context ? `method ${String(context.name)}` : 'function'}(${calcHash(this, args)}).`);
 
           const hash = calcHash(this, args);
           const now = Date.now();
