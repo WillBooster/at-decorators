@@ -27,7 +27,7 @@ export const memoize = memoizeFactory();
  * @param {number} [options.maxCachedArgsSize=100] - The maximum number of distinct values that can be cached.
  * @param {number} [options.cacheDuration=Number.POSITIVE_INFINITY] - The maximum number of milliseconds that a cached value is valid.
  * @param {Function} [options.calcHash] - A function to calculate the hash for a given context and arguments. Defaults to hashing the stringified context and arguments.
- * @param {Map<unknown, unknown>[]} [options.caches] - An array of maps to store cached values.
+ * @param {Map<string, [unknown, number]>[]} [options.caches] - An array of maps to store cached values.
  * @returns {Function} A new memoize function with the specified cache sizes.
  */
 export function memoizeFactory({

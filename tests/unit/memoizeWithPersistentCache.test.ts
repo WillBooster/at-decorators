@@ -1,152 +1,34 @@
 import { setTimeout } from 'node:timers/promises';
 
-import { memoizeOne } from '../../src/index.js';
-import { memoize, memoizeFactory } from '../../src/memoize.js';
+import { memoizeWithPersistentCacheFactory } from '../../src/memoizeWithPersistentCache.js';
 
 import { getNextInteger } from './shared.js';
-
-describe('memory cache', () => {
-  abstract class Random {
-    _count: number;
-
-    constructor(initialCount = 1) {
-      this._count = initialCount;
-    }
-
-    @memoize
-    nextInteger(base = 0): number {
-      return this._count * base + getNextInteger();
-    }
-
-    @memoize
-    nextString(base = 0): string {
-      return String(this._count * base + getNextInteger());
-    }
-
-    abstract get count(): number;
-  }
-
-  class RandomChild extends Random {
-    @memoizeOne
-    get count(): number {
-      return this._count++;
-    }
-  }
-
-  const random1 = new RandomChild();
-  const random2 = new RandomChild(10);
-
-  const nextInteger1 = memoize((base: number = 0): number => base + getNextInteger());
-  const nextInteger2 = memoizeFactory({ maxCachedArgsSize: 10, cacheDuration: -1 })(
-    (base: number = 0): number => base + getNextInteger()
-  );
-  const nextInteger3 = memoizeFactory({ cacheDuration: 200 })((base: number = 0): number => base + getNextInteger());
-  const asyncNextInteger = memoize(async (base: number = 0): Promise<number> => {
-    await setTimeout(0);
-    return base + getNextInteger();
-  });
-
-  test.each([
-    ['with', (...args: number[]) => random1.nextInteger(...args)],
-    ['without', (...args: number[]) => nextInteger1(...args)],
-  ])('memoize function %s decorator', (_, func) => {
-    expect(func()).toBe(func());
-    expect(func(100)).toBe(func(100));
-    expect(func(0)).not.toBe(func(100));
-  });
-
-  test('memoize async function', async () => {
-    expect(typeof (await asyncNextInteger())).toBe('number');
-    expect(await asyncNextInteger()).toBe(await asyncNextInteger());
-    expect(await asyncNextInteger(100)).toBe(await asyncNextInteger(100));
-    expect(await asyncNextInteger(0)).not.toBe(await asyncNextInteger(100));
-  });
-
-  test('memoize async function with exception', async () => {
-    const asyncErrorFunction = memoize(async () => {
-      await setTimeout(0);
-      throw new Error('Test error');
-    });
-
-    await expect(asyncErrorFunction()).rejects.toThrow('Test error');
-  });
-
-  test('memoize method per method', () => {
-    expect(random1.nextInteger()).toBe(random1.nextInteger());
-    expect(random1.nextInteger(100)).toBe(random1.nextInteger(100));
-    expect(random1.nextString()).toBe(random1.nextString());
-    expect(random1.nextString(100)).toBe(random1.nextString(100));
-    expect(random1.nextInteger()).not.toBe(random1.nextString());
-    expect(random1.nextInteger(100)).not.toBe(random1.nextString(100));
-  });
-
-  test('memoize method per instance', () => {
-    expect(random1.nextInteger()).not.toBe(random2.nextInteger());
-    expect(random1.nextInteger(100)).not.toBe(random2.nextInteger(100));
-  });
-
-  test('memoize getter per instance', () => {
-    expect(random1.count).toBe(random1.count);
-    expect(random2.count).toBe(random2.count);
-  });
-
-  test('memoizeFactory with -1 cacheDuration', () => {
-    expect(nextInteger2()).not.toBe(nextInteger2());
-    expect(nextInteger2(100)).not.toBe(nextInteger2(100));
-  });
-
-  test('memoizeFactory with 200 cacheDuration', async () => {
-    const initial = nextInteger3();
-    expect(nextInteger3()).toBe(initial);
-    expect(nextInteger3()).toBe(initial);
-    await setTimeout(400);
-    const second = nextInteger3();
-    expect(second).not.toBe(initial);
-    expect(nextInteger3()).toBe(second);
-    expect(nextInteger3()).toBe(second);
-  });
-
-  const memoizeOneValue = memoizeFactory({ maxCachedArgsSize: 1 });
-  class Klass {
-    @memoizeOneValue
-    get obj(): Record<string, string> {
-      return {};
-    }
-  }
-
-  test('memoizeOneValue', () => {
-    const k = new Klass();
-    expect(k.obj).toEqual({});
-    k.obj['a'] = 'b';
-    expect(k.obj).toEqual({ a: 'b' });
-  });
-});
 
 describe('persistent cache', () => {
   const persistentStore = new Map<string, [number, unknown]>();
 
-  function persistCache(hash: string, currentTime: number, value: unknown): void {
-    persistentStore.set(hash, [currentTime, value]);
+  function persistCache(persistentKey: string, hash: string, currentTime: number, value: unknown): void {
+    persistentStore.set(`${persistentKey}_${hash}`, [currentTime, value]);
   }
 
-  function tryReadingCache(hash: string): [number, unknown] | undefined {
-    return persistentStore.get(hash);
+  function tryReadingCache(persistentKey: string, hash: string): [number, unknown] | undefined {
+    return persistentStore.get(`${persistentKey}_${hash}`);
   }
 
-  function removeCache(hash: string): void {
-    persistentStore.delete(hash);
+  function removeCache(persistentKey: string, hash: string): void {
+    persistentStore.delete(`${persistentKey}_${hash}`);
   }
 
   const caches: Map<string, [unknown, number]>[] = [];
-  const memoize = memoizeFactory({
+  const memoize = memoizeWithPersistentCacheFactory({
     caches,
     persistCache,
     tryReadingCache,
     removeCache,
     cacheDuration: 200,
   });
-  const nextIntegerWithPersistence = memoize((base: number = 0): number => base + getNextInteger());
-  const nextIntegerWithPersistence2 = memoize((base: number = 0): number => base + getNextInteger());
+  const nextIntegerWithPersistence = memoize('nextInteger')((base: number = 0): number => base + getNextInteger());
+  const nextIntegerWithPersistence2 = memoize('nextInteger2')((base: number = 0): number => base + getNextInteger());
 
   function clearCache(): void {
     for (const cache of caches) {
@@ -192,12 +74,12 @@ describe('persistent cache', () => {
   });
 
   test('remove oldest cache entry when maxCachedArgsSize is reached', () => {
-    const withSizeLimit = memoizeFactory({
+    const withSizeLimit = memoizeWithPersistentCacheFactory({
       persistCache,
       tryReadingCache,
       removeCache,
       maxCachedArgsSize: 2,
-    })((base: number = 0): number => base + getNextInteger());
+    })('nextInteger')((base: number = 0): number => base + getNextInteger());
 
     const value1 = withSizeLimit(100);
     const value2 = withSizeLimit(200);
@@ -224,12 +106,12 @@ function errorThrowingRemoveCache(): never {
 }
 
 describe('error handling in cache operations', () => {
-  const nextIntegerWithErrorHandling = memoizeFactory({
+  const nextIntegerWithErrorHandling = memoizeWithPersistentCacheFactory({
     persistCache: errorThrowingPersistCache,
     tryReadingCache: errorThrowingTryReadingCache,
     removeCache: errorThrowingRemoveCache,
     cacheDuration: 200,
-  })((base: number = 0): number => base + getNextInteger());
+  })('nextInteger')((base: number = 0): number => base + getNextInteger());
 
   test('ignore errors in persistCache, tryReadingCache and removeCache', () => {
     expect(() => nextIntegerWithErrorHandling(100)).not.toThrow();
@@ -245,12 +127,12 @@ async function asyncErrorThrowingRemoveCache(): Promise<never> {
 }
 
 describe('async error handling in cache operations', () => {
-  const nextIntegerWithAsyncErrorHandling = memoizeFactory({
+  const nextIntegerWithAsyncErrorHandling = memoizeWithPersistentCacheFactory({
     persistCache: asyncErrorThrowingPersistCache,
     tryReadingCache: errorThrowingTryReadingCache,
     removeCache: asyncErrorThrowingRemoveCache,
     cacheDuration: 200,
-  })((base: number = 0): number => base + getNextInteger());
+  })('nextInteger')((base: number = 0): number => base + getNextInteger());
 
   test('ignore errors in async persistCache, non-async tryReadingCache and async removeCache', async () => {
     expect(() => nextIntegerWithAsyncErrorHandling(100)).not.toThrow();
