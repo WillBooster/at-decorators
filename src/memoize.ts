@@ -1,4 +1,4 @@
-import { sha3_512 } from './hash.js';
+import { calcHashWithContext } from './caclHash.js';
 
 /**
  * A memoization decorator/function that caches the results of method/getter/function calls to improve performance.
@@ -18,7 +18,7 @@ import { sha3_512 } from './hash.js';
 export const memoize = memoizeFactory();
 
 /**
- * Factory function to create a memoize function with custom cache sizes.
+ * Factory function to create a memoize function with custom cache settings.
  *
  * @template This - The type of the `this` context within the method, getter or function.
  * @template Args - The types of the arguments to the method, getter or function.
@@ -27,18 +27,18 @@ export const memoize = memoizeFactory();
  * @param {number} [options.maxCachedArgsSize=100] - The maximum number of distinct values that can be cached.
  * @param {number} [options.cacheDuration=Number.POSITIVE_INFINITY] - The maximum number of milliseconds that a cached value is valid.
  * @param {Function} [options.calcHash] - A function to calculate the hash for a given context and arguments. Defaults to hashing the stringified context and arguments.
- * @param {Map<string, [unknown, number]>[]} [options.caches] - An array of maps to store cached values.
- * @returns {Function} A new memoize function with the specified cache sizes.
+ * @param {Map<string, [unknown, number]>[]} [options.caches] - An array of maps to store cached values. Useful for tracking and clearing caches externally.
+ * @returns {Function} A new memoize function with the specified cache settings.
  */
 export function memoizeFactory({
   cacheDuration = Number.POSITIVE_INFINITY,
   caches,
-  calcHash = (self, args) => sha3_512(JSON.stringify([self, args])),
+  calcHash = calcHashWithContext,
   maxCachedArgsSize = 100,
 }: {
   maxCachedArgsSize?: number;
   cacheDuration?: number;
-  calcHash?: (self: unknown, args: unknown) => string;
+  calcHash?: (self: unknown, args: unknown[]) => string;
   caches?: Map<string, [unknown, number]>[];
 } = {}) {
   return function memoize<This, Args extends unknown[], Return>(

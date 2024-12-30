@@ -27,8 +27,8 @@ describe('persistent cache', () => {
     removeCache,
     cacheDuration: 200,
   });
-  const nextIntegerWithPersistence = memoize('nextInteger')((base: number = 0): number => base + getNextInteger());
-  const nextIntegerWithPersistence2 = memoize('nextInteger2')((base: number = 0): number => base + getNextInteger());
+  const nextIntegerWithPersistence = memoize('nextInteger')((base: number = 1): number => base + getNextInteger());
+  const nextIntegerWithPersistence2 = memoize('nextInteger2')((base: number = 1): number => base + getNextInteger());
 
   function clearCache(): void {
     for (const cache of caches) {
@@ -79,7 +79,7 @@ describe('persistent cache', () => {
       tryReadingCache,
       removeCache,
       maxCachedArgsSize: 2,
-    })('nextInteger')((base: number = 0): number => base + getNextInteger());
+    })('nextInteger')((base: number = 1): number => base + getNextInteger());
 
     const value1 = withSizeLimit(100);
     const value2 = withSizeLimit(200);
@@ -111,7 +111,7 @@ describe('error handling in cache operations', () => {
     tryReadingCache: errorThrowingTryReadingCache,
     removeCache: errorThrowingRemoveCache,
     cacheDuration: 200,
-  })('nextInteger')((base: number = 0): number => base + getNextInteger());
+  })('nextInteger')((base: number = 1): number => base + getNextInteger());
 
   test('ignore errors in persistCache, tryReadingCache and removeCache', () => {
     expect(() => nextIntegerWithErrorHandling(100)).not.toThrow();
@@ -132,7 +132,7 @@ describe('async error handling in cache operations', () => {
     tryReadingCache: errorThrowingTryReadingCache,
     removeCache: asyncErrorThrowingRemoveCache,
     cacheDuration: 200,
-  })('nextInteger')((base: number = 0): number => base + getNextInteger());
+  })('nextInteger')((base: number = 1): number => base + getNextInteger());
 
   test('ignore errors in async persistCache, non-async tryReadingCache and async removeCache', async () => {
     expect(() => nextIntegerWithAsyncErrorHandling(100)).not.toThrow();

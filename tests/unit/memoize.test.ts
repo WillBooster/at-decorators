@@ -1,6 +1,5 @@
 import { setTimeout } from 'node:timers/promises';
 
-import { memoizeOne } from '../../src/index.js';
 import { memoize, memoizeFactory } from '../../src/memoize.js';
 
 import { getNextInteger } from './shared.js';
@@ -14,12 +13,12 @@ describe('memory cache', () => {
     }
 
     @memoize
-    nextInteger(base = 0): number {
+    nextInteger(base = 1): number {
       return this._count * base + getNextInteger();
     }
 
     @memoize
-    nextString(base = 0): string {
+    nextString(base = 1): string {
       return String(this._count * base + getNextInteger());
     }
 
@@ -27,44 +26,63 @@ describe('memory cache', () => {
   }
 
   class RandomChild extends Random {
-    @memoizeOne
+    @memoize
     get count(): number {
       return this._count++;
+    }
+
+    @memoize
+    get random(): number {
+      return Math.random();
     }
   }
 
   const random1 = new RandomChild();
   const random2 = new RandomChild(10);
 
-  const nextInteger1 = memoize((base: number = 0): number => base + getNextInteger());
+  const nextInteger1 = memoize((base: number = 1): number => base + getNextInteger());
   const nextInteger2 = memoizeFactory({ maxCachedArgsSize: 10, cacheDuration: -1 })(
-    (base: number = 0): number => base + getNextInteger()
+    (base: number = 1): number => base + getNextInteger()
   );
-  const nextInteger3 = memoizeFactory({ cacheDuration: 200 })((base: number = 0): number => base + getNextInteger());
-  const asyncNextInteger = memoize(async (base: number = 0): Promise<number> => {
-    await setTimeout(0);
+  const nextInteger3 = memoizeFactory({ cacheDuration: 200 })((base: number = 1): number => base + getNextInteger());
+  const asyncNextInteger = memoize(async (base: number = 1): Promise<number> => {
+    await setTimeout(1);
     return base + getNextInteger();
   });
 
-  test.each([
-    ['with', (...args: number[]) => random1.nextInteger(...args)],
-    ['without', (...args: number[]) => nextInteger1(...args)],
-  ])('memoize function %s decorator', (_, func) => {
-    expect(func()).toBe(func());
-    expect(func(100)).toBe(func(100));
-    expect(func(0)).not.toBe(func(100));
+  test('memoize function with decorator', () => {
+    expect(random1.nextInteger()).toBe(random1.nextInteger());
+    expect(random1.nextInteger(100)).toBe(random1.nextInteger(100));
+    expect(random1.nextInteger(1)).not.toBe(random1.nextInteger(100));
+  });
+
+  test('memoize function without decorator', () => {
+    expect(nextInteger1()).toBe(nextInteger1());
+    expect(nextInteger1(100)).toBe(nextInteger1(100));
+    expect(nextInteger1(1)).not.toBe(nextInteger1(100));
+  });
+
+  test('invalidate cache when fields change', () => {
+    const first = random1.nextInteger();
+    random1._count++;
+    expect(random1.nextInteger()).not.toBe(first);
+  });
+
+  test('invalidate cache when fields change via getter', () => {
+    expect(random1.count).not.toBe(random1.count);
+    expect(random2.count).not.toBe(random2.count);
   });
 
   test('memoize async function', async () => {
     expect(typeof (await asyncNextInteger())).toBe('number');
     expect(await asyncNextInteger()).toBe(await asyncNextInteger());
     expect(await asyncNextInteger(100)).toBe(await asyncNextInteger(100));
-    expect(await asyncNextInteger(0)).not.toBe(await asyncNextInteger(100));
+    expect(await asyncNextInteger(1)).not.toBe(await asyncNextInteger(100));
   });
 
   test('memoize async function with exception', async () => {
     const asyncErrorFunction = memoize(async () => {
-      await setTimeout(0);
+      await setTimeout(1);
       throw new Error('Test error');
     });
 
@@ -86,8 +104,9 @@ describe('memory cache', () => {
   });
 
   test('memoize getter per instance', () => {
-    expect(random1.count).toBe(random1.count);
-    expect(random2.count).toBe(random2.count);
+    expect(random1.random).toBe(random1.random);
+    expect(random2.random).toBe(random2.random);
+    expect(random1.random).not.toBe(random2.random);
   });
 
   test('memoizeFactory with -1 cacheDuration', () => {
