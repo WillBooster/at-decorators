@@ -103,12 +103,12 @@ describe('persistent cache', () => {
     expect(nextIntegerWithPersistence(200)).toBe(value2);
   });
 
-  test('remove oldest cache entry when maxCachedArgsSize is reached', () => {
+  test('remove oldest cache entry when maxCacheSizePerTarget is reached', () => {
     const withSizeLimit = memoizeWithPersistentCacheFactory({
       persistCache,
       tryReadingCache,
       removeCache,
-      maxCachedArgsSize: 2,
+      maxCacheSizePerTarget: 2,
     })('nextInteger')((base: number = 1): number => base + getNextInteger());
 
     const value1 = withSizeLimit(100);

@@ -3,7 +3,7 @@ import { calcHashWithContext } from './caclHash.js';
 /**
  * A memoization decorator/function that caches the results of method/getter/function calls to improve performance.
  * This decorator/function can be applied to methods and getters in a class as a decorator, and functions without context as a function.
- * The cache size is limited by `maxCachedArgsSize` parameter (100 by default) in `memoizeFactory` function.
+ * The cache size is limited by `maxCacheSizePerTarget` parameter (100 by default) in `memoizeFactory` function.
  * When the cache size exceeds its limit, the oldest cached value is removed.
  *
  * @template This The type of the `this` context within the method, getter or function.
@@ -24,7 +24,7 @@ export const memoize = memoizeFactory();
  * @template Args - The types of the arguments to the method, getter or function.
  * @template Return - The return type of the method, getter or function.
  * @param {Object} options - The options for the memoize function.
- * @param {number} [options.maxCachedArgsSize=100] - The maximum number of distinct values that can be cached.
+ * @param {number} [options.maxCacheSizePerTarget=100] - The maximum number of distinct values that can be cached.
  * @param {number} [options.cacheDuration=Number.POSITIVE_INFINITY] - The maximum number of milliseconds that a cached value is valid.
  * @param {Function} [options.calcHash] - A function to calculate the hash for a given context and arguments. Defaults to hashing the stringified context and arguments.
  * @param {Map<string, [unknown, number]>[]} [options.caches] - An array of maps to store cached values. Useful for tracking and clearing caches externally.
@@ -34,12 +34,12 @@ export function memoizeFactory({
   cacheDuration = Number.POSITIVE_INFINITY,
   caches,
   calcHash = calcHashWithContext,
-  maxCachedArgsSize = 100,
+  maxCacheSizePerTarget = 100,
 }: {
   cacheDuration?: number;
   caches?: Map<string, [unknown, number]>[];
   calcHash?: (self: unknown, args: unknown[]) => string;
-  maxCachedArgsSize?: number;
+  maxCacheSizePerTarget?: number;
 } = {}) {
   return function memoize<This, Args extends unknown[], Return>(
     target: ((this: This, ...args: Args) => Return) | ((...args: Args) => Return) | keyof This,
@@ -64,7 +64,7 @@ export function memoizeFactory({
           }
 
           const result = (target as (this: This) => Return).call(this);
-          if (cache.size >= maxCachedArgsSize) {
+          if (cache.size >= maxCacheSizePerTarget) {
             const oldestKey = cache.keys().next().value as string;
             cache.delete(oldestKey);
           }
@@ -88,7 +88,7 @@ export function memoizeFactory({
             ? (target as (this: This, ...args: Args) => Return).call(this, ...args)
             : (target as (...args: Args) => Return)(...args);
 
-          if (cache.size >= maxCachedArgsSize) {
+          if (cache.size >= maxCacheSizePerTarget) {
             const oldestKey = cache.keys().next().value as string;
             cache.delete(oldestKey);
           }

@@ -7,7 +7,7 @@ import { sha3_512 } from './hash.js';
  * @template Args - The types of the arguments to the method, getter or function.
  * @template Return - The return type of the method, getter or function.
  * @param {Object} options - The options for the memoize function.
- * @param {number} [options.maxCachedArgsSize=100] - The maximum number of distinct values that can be cached.
+ * @param {number} [options.maxCacheSizePerTarget=100] - The maximum number of distinct values that can be cached.
  * @param {number} [options.cacheDuration=Number.POSITIVE_INFINITY] - The maximum number of milliseconds that a cached value is valid.
  * @param {Function} [options.calcHash] - A function to calculate the hash for a given context and arguments. Defaults to hashing the stringified context and arguments.
  * @param {Map<string, [unknown, number]>[]} [options.caches] - An array of maps to store cached values.
@@ -20,7 +20,7 @@ export function memoizeWithPersistentCacheFactory({
   cacheDuration = Number.POSITIVE_INFINITY,
   caches,
   calcHash = (self, args) => sha3_512(JSON.stringify([self, args])),
-  maxCachedArgsSize = 100,
+  maxCacheSizePerTarget = 100,
   persistCache,
   removeCache,
   tryReadingCache,
@@ -28,7 +28,7 @@ export function memoizeWithPersistentCacheFactory({
   cacheDuration?: number;
   caches?: Map<string, [unknown, number]>[];
   calcHash?: (self: unknown, args: unknown) => string;
-  maxCachedArgsSize?: number;
+  maxCacheSizePerTarget?: number;
   persistCache: (persistentKey: string, hash: string, value: unknown, currentTime: number) => void;
   removeCache: (persistentKey: string, hash: string) => void;
   tryReadingCache: (persistentKey: string, hash: string) => [unknown, number] | undefined;
@@ -83,7 +83,7 @@ export function memoizeWithPersistentCacheFactory({
             }
 
             const result = (target as (this: This) => Return).call(this);
-            if (cache.size >= maxCachedArgsSize) {
+            if (cache.size >= maxCacheSizePerTarget) {
               const oldestKey = cache.keys().next().value as string;
               cache.delete(oldestKey);
               try {
@@ -155,7 +155,7 @@ export function memoizeWithPersistentCacheFactory({
               ? (target as (this: This, ...args: Args) => Return).call(this, ...args)
               : (target as (...args: Args) => Return)(...args);
 
-            if (cache.size >= maxCachedArgsSize) {
+            if (cache.size >= maxCacheSizePerTarget) {
               const oldestKey = cache.keys().next().value as string;
               cache.delete(oldestKey);
               try {
