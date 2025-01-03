@@ -34,25 +34,18 @@ export function memoizeWithPersistentCacheFactory({
   tryReadingCache: (persistentKey: string, hash: string) => [number, unknown] | undefined;
 }) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return function <This, Args extends any[], Return>(
-    persistentKey: string
-  ): (
-    target: ((this: This, ...args: Args) => Return) | ((...args: Args) => Return) | keyof This,
-    context?:
-      | ClassMethodDecoratorContext<This, (this: This, ...args: Args) => Return>
-      | ClassGetterDecoratorContext<This, Return>
-  ) => (this: This, ...args: Args) => Return {
+  return function <This, Args extends any[], Return>(persistentKey: string) {
     return function memoize(
       target: ((this: This, ...args: Args) => Return) | ((...args: Args) => Return) | keyof This,
       context?:
         | ClassMethodDecoratorContext<This, (this: This, ...args: Args) => Return>
         | ClassGetterDecoratorContext<This, Return>
-    ): (this: This, ...args: Args) => Return {
+    ) {
       const cache = new Map<string, [Return, number]>();
       caches?.push(cache);
 
       return context?.kind === 'getter'
-        ? function (this: This): Return {
+        ? function (this: This) {
             console.log(`Entering getter ${String(context.name)}.`);
 
             const hash = calcHash(this, []);
@@ -126,7 +119,7 @@ export function memoizeWithPersistentCacheFactory({
             console.log(`Exiting getter ${String(context.name)}.`);
             return result as Return;
           }
-        : function (this: This, ...args: { [K in keyof Args]: Args[K] }): Return {
+        : function (this: This, ...args: { [K in keyof Args]: Args[K] }) {
             console.log(
               `Entering ${context ? `method ${String(context.name)}` : 'function'}(${calcHash(this, args)}).`
             );

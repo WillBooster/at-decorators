@@ -55,13 +55,13 @@ export function memoizeOneFactory({
     context?:
       | ClassMethodDecoratorContext<This, (this: This, ...args: Args) => Return>
       | ClassGetterDecoratorContext<This, Return>
-  ): (this: This, ...args: Args) => Return {
+  ) {
     let lastCache: Return;
     let lastCachedAt: number;
     let lastHash: string;
 
     return context?.kind === 'getter'
-      ? function (this: This): Return {
+      ? function (this: This) {
           console.log(`Entering getter ${String(context.name)}.`);
 
           const hash = calcHash(this, []);
@@ -75,7 +75,7 @@ export function memoizeOneFactory({
           console.log(`Exiting getter ${String(context.name)}.`);
           return lastCache;
         }
-      : function (this: This, ...args: Args): Return {
+      : function (this: This, ...args: Args) {
           console.log(`Entering ${context ? `method ${String(context.name)}` : 'function'}(${JSON.stringify(args)}).`);
 
           const hash = calcHash(this, args);
