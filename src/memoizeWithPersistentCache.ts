@@ -11,7 +11,7 @@ import { sha3_512 } from './hash.js';
  * @param {number} [options.cacheDuration=Number.POSITIVE_INFINITY] - The maximum number of milliseconds that a cached value is valid.
  * @param {Function} [options.calcHash] - A function to calculate the hash for a given context and arguments. Defaults to hashing the stringified context and arguments.
  * @param {Map<string, [unknown, number]>[]} [options.caches] - An array of maps to store cached values.
- * @param {Function} options.persistCache - A function to store cached values persistently.
+ * @param {Function} options.persistCache - A function to store cached values with current time persistently.
  * @param {Function} options.tryReadingCache - A function to try reading cached values from persistent storage.
  * @param {Function} options.removeCache - A function to remove cached values.
  * @returns {Function} A new memoize function with the specified cache sizes.
@@ -29,9 +29,9 @@ export function memoizeWithPersistentCacheFactory({
   caches?: Map<string, [unknown, number]>[];
   calcHash?: (self: unknown, args: unknown) => string;
   maxCachedArgsSize?: number;
-  persistCache: (persistentKey: string, hash: string, currentTime: number, value: unknown) => void;
+  persistCache: (persistentKey: string, hash: string, value: unknown, currentTime: number) => void;
   removeCache: (persistentKey: string, hash: string) => void;
-  tryReadingCache: (persistentKey: string, hash: string) => [number, unknown] | undefined;
+  tryReadingCache: (persistentKey: string, hash: string) => [unknown, number] | undefined;
 }) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return function <This, Args extends any[], Return>(persistentKey: string) {
@@ -46,8 +46,6 @@ export function memoizeWithPersistentCacheFactory({
 
       return context?.kind === 'getter'
         ? function (this: This) {
-            console.log(`Entering getter ${String(context.name)}.`);
-
             const hash = calcHash(this, []);
             const now = Date.now();
 
@@ -55,7 +53,6 @@ export function memoizeWithPersistentCacheFactory({
             if (cache.has(hash)) {
               const [cachedValue, cachedAt] = cache.get(hash) as [Return, number];
               if (now - cachedAt <= cacheDuration) {
-                console.log(`Exiting getter ${String(context.name)}.`);
                 return cachedValue;
               }
 
@@ -72,10 +69,9 @@ export function memoizeWithPersistentCacheFactory({
             try {
               const persistentCache = tryReadingCache(persistentKey, hash);
               if (persistentCache) {
-                const [cachedAt, cachedValue] = persistentCache;
+                const [cachedValue, cachedAt] = persistentCache;
                 if (now - cachedAt <= cacheDuration) {
                   cache.set(hash, [cachedValue as Return, cachedAt]);
-                  console.log(`Exiting getter ${String(context.name)}.`);
                   return cachedValue as Return;
                 }
 
@@ -101,29 +97,24 @@ export function memoizeWithPersistentCacheFactory({
             if (result instanceof Promise) {
               void (async () => {
                 try {
-                  const promise = persistCache(persistentKey, hash, now, result) as unknown;
+                  const promise = persistCache(persistentKey, hash, await result, now) as unknown;
                   if (promise instanceof Promise) promise.catch(noop);
                 } catch {
                   // do nothing.
                 }
-              });
+              })();
             } else {
               try {
-                const promise = persistCache(persistentKey, hash, now, result) as unknown;
+                const promise = persistCache(persistentKey, hash, result, now) as unknown;
                 if (promise instanceof Promise) promise.catch(noop);
               } catch {
                 // do nothing.
               }
             }
 
-            console.log(`Exiting getter ${String(context.name)}.`);
             return result as Return;
           }
         : function (this: This, ...args: { [K in keyof Args]: Args[K] }) {
-            console.log(
-              `Entering ${context ? `method ${String(context.name)}` : 'function'}(${calcHash(this, args)}).`
-            );
-
             const hash = calcHash(this, args);
             const now = Date.now();
 
@@ -131,7 +122,6 @@ export function memoizeWithPersistentCacheFactory({
             if (cache.has(hash)) {
               const [cachedValue, cachedAt] = cache.get(hash) as [Return, number];
               if (now - cachedAt <= cacheDuration) {
-                console.log(`Exiting ${context ? `method ${String(context.name)}` : 'function'}.`);
                 return cachedValue;
               }
 
@@ -148,10 +138,9 @@ export function memoizeWithPersistentCacheFactory({
             try {
               const persistentCache = tryReadingCache(persistentKey, hash);
               if (persistentCache) {
-                const [cachedAt, cachedValue] = persistentCache;
+                const [cachedValue, cachedAt] = persistentCache;
                 if (now - cachedAt <= cacheDuration) {
                   cache.set(hash, [cachedValue as Return, cachedAt]);
-                  console.log(`Exiting ${context ? `method ${String(context.name)}` : 'function'}.`);
                   return cachedValue as Return;
                 }
 
@@ -180,22 +169,21 @@ export function memoizeWithPersistentCacheFactory({
             if (result instanceof Promise) {
               void (async () => {
                 try {
-                  const promise = persistCache(persistentKey, hash, now, result) as unknown;
+                  const promise = persistCache(persistentKey, hash, await result, now) as unknown;
                   if (promise instanceof Promise) promise.catch(noop);
                 } catch {
                   // do nothing.
                 }
-              });
+              })();
             } else {
               try {
-                const promise = persistCache(persistentKey, hash, now, result) as unknown;
+                const promise = persistCache(persistentKey, hash, result, now) as unknown;
                 if (promise instanceof Promise) promise.catch(noop);
               } catch {
                 // do nothing.
               }
             }
 
-            console.log(`Exiting ${context ? `method ${String(context.name)}` : 'function'}.`);
             return result;
           };
     };

@@ -5,13 +5,14 @@ import { memoizeWithPersistentCacheFactory } from '../../src/memoizeWithPersiste
 import { getNextInteger } from './shared.js';
 
 describe('persistent cache', () => {
-  const persistentStore = new Map<string, [number, unknown]>();
+  const persistentStore = new Map<string, [unknown, number]>();
 
-  function persistCache(persistentKey: string, hash: string, currentTime: number, value: unknown): void {
-    persistentStore.set(`${persistentKey}_${hash}`, [currentTime, value]);
+  function persistCache(persistentKey: string, hash: string, value: unknown, currentTime: number): void {
+    console.log(`Persisting ${persistentKey}_${hash}:`, value);
+    persistentStore.set(`${persistentKey}_${hash}`, [value, currentTime]);
   }
 
-  function tryReadingCache(persistentKey: string, hash: string): [number, unknown] | undefined {
+  function tryReadingCache(persistentKey: string, hash: string): [unknown, number] | undefined {
     return persistentStore.get(`${persistentKey}_${hash}`);
   }
 
@@ -27,10 +28,23 @@ describe('persistent cache', () => {
     removeCache,
     cacheDuration: 200,
   });
+
+  class Random {
+    @memoize('Random.nextInteger')
+    nextInteger(): number {
+      return getNextInteger();
+    }
+
+    @memoize('Random.asyncNextInteger')
+    async asyncNextInteger(): Promise<number> {
+      return getNextInteger();
+    }
+  }
+
   const nextIntegerWithPersistence = memoize('nextInteger')((base: number = 1): number => base + getNextInteger());
   const nextIntegerWithPersistence2 = memoize('nextInteger2')((base: number = 1): number => base + getNextInteger());
 
-  function clearCache(): void {
+  function clearMemoryCaches(): void {
     for (const cache of caches) {
       cache.clear();
     }
@@ -38,12 +52,28 @@ describe('persistent cache', () => {
 
   beforeEach(() => {
     persistentStore.clear();
-    clearCache();
+    clearMemoryCaches();
   });
 
-  test('persist cache per method', () => {
+  test('persist cache per method', async () => {
+    const random = new Random();
+    const initial = random.nextInteger();
+    const asyncInitial = await random.asyncNextInteger();
+    clearMemoryCaches();
+
+    expect(random.nextInteger()).toBe(initial);
+
+    while (persistentStore.size === 1) {
+      await setTimeout(0);
+    }
+
+    expect(await random.asyncNextInteger()).toBe(asyncInitial);
+    expect(persistentStore.size).toBe(2);
+  });
+
+  test('persist cache per function', () => {
     const initial = nextIntegerWithPersistence(100);
-    clearCache();
+    clearMemoryCaches();
 
     expect(nextIntegerWithPersistence(100)).toBe(initial);
     expect(persistentStore.size).toBe(1);
@@ -54,7 +84,7 @@ describe('persistent cache', () => {
 
   test('remove expired cache', async () => {
     const initial = nextIntegerWithPersistence(100);
-    clearCache();
+    clearMemoryCaches();
 
     expect(persistentStore.size).toBe(1);
     await setTimeout(400);
@@ -66,7 +96,7 @@ describe('persistent cache', () => {
   test('handle multiple cache entries', () => {
     const value1 = nextIntegerWithPersistence(100);
     const value2 = nextIntegerWithPersistence(200);
-    clearCache();
+    clearMemoryCaches();
 
     expect(persistentStore.size).toBe(2);
     expect(nextIntegerWithPersistence(100)).toBe(value1);
@@ -84,7 +114,7 @@ describe('persistent cache', () => {
     const value1 = withSizeLimit(100);
     const value2 = withSizeLimit(200);
     const value3 = withSizeLimit(300);
-    clearCache();
+    clearMemoryCaches();
 
     expect(persistentStore.size).toBe(2);
     expect(withSizeLimit(300)).toBe(value3);

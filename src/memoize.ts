@@ -52,15 +52,12 @@ export function memoizeFactory({
 
     return context?.kind === 'getter'
       ? function (this: This) {
-          console.log(`Entering getter ${String(context.name)}.`);
-
           const hash = calcHash(this, []);
           const now = Date.now();
 
           if (cache.has(hash)) {
             const [cachedValue, cachedAt] = cache.get(hash) as [Return, number];
             if (now - cachedAt <= cacheDuration) {
-              console.log(`Exiting getter ${String(context.name)}.`);
               return cachedValue;
             }
             cache.delete(hash);
@@ -73,19 +70,15 @@ export function memoizeFactory({
           }
           cache.set(hash, [result, now]);
 
-          console.log(`Exiting getter ${String(context.name)}.`);
           return result;
         }
       : function (this: This, ...args: Args) {
-          console.log(`Entering ${context ? `method ${String(context.name)}` : 'function'}(${calcHash(this, args)}).`);
-
           const hash = calcHash(this, args);
           const now = Date.now();
 
           if (cache.has(hash)) {
             const [cachedValue, cachedAt] = cache.get(hash) as [Return, number];
             if (now - cachedAt <= cacheDuration) {
-              console.log(`Exiting ${context ? `method ${String(context.name)}` : 'function'}.`);
               return cachedValue;
             }
             cache.delete(hash);
@@ -101,7 +94,6 @@ export function memoizeFactory({
           }
           cache.set(hash, [result, now]);
 
-          console.log(`Exiting ${context ? `method ${String(context.name)}` : 'function'}.`);
           return result;
         };
   };
