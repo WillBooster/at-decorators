@@ -36,10 +36,10 @@ export function memoizeFactory({
   calcHash = calcHashWithContext,
   maxCachedArgsSize = 100,
 }: {
-  maxCachedArgsSize?: number;
   cacheDuration?: number;
-  calcHash?: (self: unknown, args: unknown[]) => string;
   caches?: Map<string, [unknown, number]>[];
+  calcHash?: (self: unknown, args: unknown[]) => string;
+  maxCachedArgsSize?: number;
 } = {}) {
   return function memoize<This, Args extends unknown[], Return>(
     target: ((this: This, ...args: Args) => Return) | ((...args: Args) => Return) | keyof This,

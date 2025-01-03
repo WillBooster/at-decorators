@@ -25,13 +25,13 @@ export function memoizeWithPersistentCacheFactory({
   removeCache,
   tryReadingCache,
 }: {
-  maxCachedArgsSize?: number;
   cacheDuration?: number;
-  calcHash?: (self: unknown, args: unknown) => string;
   caches?: Map<string, [unknown, number]>[];
+  calcHash?: (self: unknown, args: unknown) => string;
+  maxCachedArgsSize?: number;
   persistCache: (persistentKey: string, hash: string, currentTime: number, value: unknown) => void;
-  tryReadingCache: (persistentKey: string, hash: string) => [number, unknown] | undefined;
   removeCache: (persistentKey: string, hash: string) => void;
+  tryReadingCache: (persistentKey: string, hash: string) => [number, unknown] | undefined;
 }) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return function <This, Args extends any[], Return>(
