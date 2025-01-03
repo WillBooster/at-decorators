@@ -48,165 +48,163 @@ export function memoizeWithPersistentCacheFactory({
         | ClassMethodDecoratorContext<This, (this: This, ...args: Args) => Return>
         | ClassGetterDecoratorContext<This, Return>
     ): (this: This, ...args: Args) => Return {
-      if (context?.kind === 'getter') {
-        const cache = new Map<string, [Return, number]>();
-        caches?.push(cache);
-        return function (this: This): Return {
-          console.log(`Entering getter ${String(context.name)}.`);
+      const cache = new Map<string, [Return, number]>();
+      caches?.push(cache);
 
-          const hash = calcHash(this, []);
-          const now = Date.now();
+      return context?.kind === 'getter'
+        ? function (this: This): Return {
+            console.log(`Entering getter ${String(context.name)}.`);
 
-          // Check in-memory cache first
-          if (cache.has(hash)) {
-            const [cachedValue, cachedAt] = cache.get(hash) as [Return, number];
-            if (now - cachedAt <= cacheDuration) {
-              console.log(`Exiting getter ${String(context.name)}.`);
-              return cachedValue;
-            }
+            const hash = calcHash(this, []);
+            const now = Date.now();
 
-            cache.delete(hash);
-            try {
-              const promise = removeCache(persistentKey, hash) as unknown;
-              if (promise instanceof Promise) promise.catch(noop);
-            } catch {
-              // do nothing.
-            }
-          }
-
-          // Try reading from persistent cache
-          try {
-            const persistentCache = tryReadingCache(persistentKey, hash);
-            if (persistentCache) {
-              const [cachedAt, cachedValue] = persistentCache;
+            // Check in-memory cache first
+            if (cache.has(hash)) {
+              const [cachedValue, cachedAt] = cache.get(hash) as [Return, number];
               if (now - cachedAt <= cacheDuration) {
-                cache.set(hash, [cachedValue as Return, cachedAt]);
                 console.log(`Exiting getter ${String(context.name)}.`);
-                return cachedValue as Return;
+                return cachedValue;
               }
 
-              const promise = removeCache(persistentKey, hash) as unknown;
-              if (promise instanceof Promise) promise.catch(noop);
+              cache.delete(hash);
+              try {
+                const promise = removeCache(persistentKey, hash) as unknown;
+                if (promise instanceof Promise) promise.catch(noop);
+              } catch {
+                // do nothing.
+              }
             }
-          } catch {
-            // do nothing.
-          }
 
-          const result = (target as (this: This) => Return).call(this);
-          if (cache.size >= maxCachedArgsSize) {
-            const oldestKey = cache.keys().next().value as string;
-            cache.delete(oldestKey);
+            // Try reading from persistent cache
             try {
-              const promise = removeCache(persistentKey, oldestKey) as unknown;
-              if (promise instanceof Promise) promise.catch(noop);
+              const persistentCache = tryReadingCache(persistentKey, hash);
+              if (persistentCache) {
+                const [cachedAt, cachedValue] = persistentCache;
+                if (now - cachedAt <= cacheDuration) {
+                  cache.set(hash, [cachedValue as Return, cachedAt]);
+                  console.log(`Exiting getter ${String(context.name)}.`);
+                  return cachedValue as Return;
+                }
+
+                const promise = removeCache(persistentKey, hash) as unknown;
+                if (promise instanceof Promise) promise.catch(noop);
+              }
             } catch {
               // do nothing.
             }
-          }
-          cache.set(hash, [result, now]);
-          if (result instanceof Promise) {
-            void (async () => {
+
+            const result = (target as (this: This) => Return).call(this);
+            if (cache.size >= maxCachedArgsSize) {
+              const oldestKey = cache.keys().next().value as string;
+              cache.delete(oldestKey);
+              try {
+                const promise = removeCache(persistentKey, oldestKey) as unknown;
+                if (promise instanceof Promise) promise.catch(noop);
+              } catch {
+                // do nothing.
+              }
+            }
+            cache.set(hash, [result, now]);
+            if (result instanceof Promise) {
+              void (async () => {
+                try {
+                  const promise = persistCache(persistentKey, hash, now, result) as unknown;
+                  if (promise instanceof Promise) promise.catch(noop);
+                } catch {
+                  // do nothing.
+                }
+              });
+            } else {
               try {
                 const promise = persistCache(persistentKey, hash, now, result) as unknown;
                 if (promise instanceof Promise) promise.catch(noop);
               } catch {
                 // do nothing.
               }
-            });
-          } else {
-            try {
-              const promise = persistCache(persistentKey, hash, now, result) as unknown;
-              if (promise instanceof Promise) promise.catch(noop);
-            } catch {
-              // do nothing.
             }
+
+            console.log(`Exiting getter ${String(context.name)}.`);
+            return result as Return;
           }
+        : function (this: This, ...args: { [K in keyof Args]: Args[K] }): Return {
+            console.log(
+              `Entering ${context ? `method ${String(context.name)}` : 'function'}(${calcHash(this, args)}).`
+            );
 
-          console.log(`Exiting getter ${String(context.name)}.`);
-          return result as Return;
-        };
-      } else {
-        const cache = new Map<string, [Return, number]>();
-        caches?.push(cache);
+            const hash = calcHash(this, args);
+            const now = Date.now();
 
-        return function (this: This, ...args: { [K in keyof Args]: Args[K] }): Return {
-          console.log(`Entering ${context ? `method ${String(context.name)}` : 'function'}(${calcHash(this, args)}).`);
-
-          const hash = calcHash(this, args);
-          const now = Date.now();
-
-          // Check in-memory cache first
-          if (cache.has(hash)) {
-            const [cachedValue, cachedAt] = cache.get(hash) as [Return, number];
-            if (now - cachedAt <= cacheDuration) {
-              console.log(`Exiting ${context ? `method ${String(context.name)}` : 'function'}.`);
-              return cachedValue;
-            }
-
-            cache.delete(hash);
-            try {
-              const promise = removeCache(persistentKey, hash) as unknown;
-              if (promise instanceof Promise) promise.catch(noop);
-            } catch {
-              // do nothing.
-            }
-          }
-
-          // Try reading from persistent cache
-          try {
-            const persistentCache = tryReadingCache(persistentKey, hash);
-            if (persistentCache) {
-              const [cachedAt, cachedValue] = persistentCache;
+            // Check in-memory cache first
+            if (cache.has(hash)) {
+              const [cachedValue, cachedAt] = cache.get(hash) as [Return, number];
               if (now - cachedAt <= cacheDuration) {
-                cache.set(hash, [cachedValue as Return, cachedAt]);
                 console.log(`Exiting ${context ? `method ${String(context.name)}` : 'function'}.`);
-                return cachedValue as Return;
+                return cachedValue;
               }
 
-              const promise = removeCache(persistentKey, hash) as unknown;
-              if (promise instanceof Promise) promise.catch(noop);
+              cache.delete(hash);
+              try {
+                const promise = removeCache(persistentKey, hash) as unknown;
+                if (promise instanceof Promise) promise.catch(noop);
+              } catch {
+                // do nothing.
+              }
             }
-          } catch {
-            // do nothing.
-          }
 
-          const result = context
-            ? (target as (this: This, ...args: Args) => Return).call(this, ...args)
-            : (target as (...args: Args) => Return)(...args);
-
-          if (cache.size >= maxCachedArgsSize) {
-            const oldestKey = cache.keys().next().value as string;
-            cache.delete(oldestKey);
+            // Try reading from persistent cache
             try {
-              const promise = removeCache(persistentKey, oldestKey) as unknown;
-              if (promise instanceof Promise) promise.catch(noop);
+              const persistentCache = tryReadingCache(persistentKey, hash);
+              if (persistentCache) {
+                const [cachedAt, cachedValue] = persistentCache;
+                if (now - cachedAt <= cacheDuration) {
+                  cache.set(hash, [cachedValue as Return, cachedAt]);
+                  console.log(`Exiting ${context ? `method ${String(context.name)}` : 'function'}.`);
+                  return cachedValue as Return;
+                }
+
+                const promise = removeCache(persistentKey, hash) as unknown;
+                if (promise instanceof Promise) promise.catch(noop);
+              }
             } catch {
               // do nothing.
             }
-          }
-          cache.set(hash, [result, now]);
-          if (result instanceof Promise) {
-            void (async () => {
+
+            const result = context
+              ? (target as (this: This, ...args: Args) => Return).call(this, ...args)
+              : (target as (...args: Args) => Return)(...args);
+
+            if (cache.size >= maxCachedArgsSize) {
+              const oldestKey = cache.keys().next().value as string;
+              cache.delete(oldestKey);
+              try {
+                const promise = removeCache(persistentKey, oldestKey) as unknown;
+                if (promise instanceof Promise) promise.catch(noop);
+              } catch {
+                // do nothing.
+              }
+            }
+            cache.set(hash, [result, now]);
+            if (result instanceof Promise) {
+              void (async () => {
+                try {
+                  const promise = persistCache(persistentKey, hash, now, result) as unknown;
+                  if (promise instanceof Promise) promise.catch(noop);
+                } catch {
+                  // do nothing.
+                }
+              });
+            } else {
               try {
                 const promise = persistCache(persistentKey, hash, now, result) as unknown;
                 if (promise instanceof Promise) promise.catch(noop);
               } catch {
                 // do nothing.
               }
-            });
-          } else {
-            try {
-              const promise = persistCache(persistentKey, hash, now, result) as unknown;
-              if (promise instanceof Promise) promise.catch(noop);
-            } catch {
-              // do nothing.
             }
-          }
 
-          console.log(`Exiting ${context ? `method ${String(context.name)}` : 'function'}.`);
-          return result;
-        };
-      }
+            console.log(`Exiting ${context ? `method ${String(context.name)}` : 'function'}.`);
+            return result;
+          };
     };
   };
 }

@@ -60,38 +60,36 @@ export function memoizeOneFactory({
     let lastCachedAt: number;
     let lastHash: string;
 
-    if (context?.kind === 'getter') {
-      return function (this: This): Return {
-        console.log(`Entering getter ${String(context.name)}.`);
+    return context?.kind === 'getter'
+      ? function (this: This): Return {
+          console.log(`Entering getter ${String(context.name)}.`);
 
-        const hash = calcHash(this, []);
-        const now = Date.now();
-        if (lastHash !== hash || now - lastCachedAt > cacheDuration) {
-          lastHash = hash;
-          lastCache = (target as (this: This) => Return).call(this);
-          lastCachedAt = now;
+          const hash = calcHash(this, []);
+          const now = Date.now();
+          if (lastHash !== hash || now - lastCachedAt > cacheDuration) {
+            lastHash = hash;
+            lastCache = (target as (this: This) => Return).call(this);
+            lastCachedAt = now;
+          }
+
+          console.log(`Exiting getter ${String(context.name)}.`);
+          return lastCache;
         }
+      : function (this: This, ...args: Args): Return {
+          console.log(`Entering ${context ? `method ${String(context.name)}` : 'function'}(${JSON.stringify(args)}).`);
 
-        console.log(`Exiting getter ${String(context.name)}.`);
-        return lastCache;
-      };
-    }
+          const hash = calcHash(this, args);
+          const now = Date.now();
+          if (lastHash !== hash || now - lastCachedAt > cacheDuration) {
+            lastHash = hash;
+            lastCache = context
+              ? (target as (this: This, ...args: Args) => Return).call(this, ...args)
+              : (target as (...args: Args) => Return)(...args);
+            lastCachedAt = now;
+          }
 
-    return function (this: This, ...args: Args): Return {
-      console.log(`Entering ${context ? `method ${String(context.name)}` : 'function'}(${JSON.stringify(args)}).`);
-
-      const hash = calcHash(this, args);
-      const now = Date.now();
-      if (lastHash !== hash || now - lastCachedAt > cacheDuration) {
-        lastHash = hash;
-        lastCache = context
-          ? (target as (this: This, ...args: Args) => Return).call(this, ...args)
-          : (target as (...args: Args) => Return)(...args);
-        lastCachedAt = now;
-      }
-
-      console.log(`Exiting ${context ? `method ${String(context.name)}` : 'function'}.`);
-      return lastCache;
-    };
+          console.log(`Exiting ${context ? `method ${String(context.name)}` : 'function'}.`);
+          return lastCache;
+        };
   };
 }

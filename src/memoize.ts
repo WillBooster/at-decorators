@@ -47,66 +47,62 @@ export function memoizeFactory({
       | ClassMethodDecoratorContext<This, (this: This, ...args: Args) => Return>
       | ClassGetterDecoratorContext<This, Return>
   ): (this: This, ...args: Args) => Return {
-    if (context?.kind === 'getter') {
-      const cache = new Map<string, [Return, number]>();
-      caches?.push(cache);
-      return function (this: This): Return {
-        console.log(`Entering getter ${String(context.name)}.`);
+    const cache = new Map<string, [Return, number]>();
+    caches?.push(cache);
 
-        const hash = calcHash(this, []);
-        const now = Date.now();
+    return context?.kind === 'getter'
+      ? function (this: This): Return {
+          console.log(`Entering getter ${String(context.name)}.`);
 
-        if (cache.has(hash)) {
-          const [cachedValue, cachedAt] = cache.get(hash) as [Return, number];
-          if (now - cachedAt <= cacheDuration) {
-            console.log(`Exiting getter ${String(context.name)}.`);
-            return cachedValue;
+          const hash = calcHash(this, []);
+          const now = Date.now();
+
+          if (cache.has(hash)) {
+            const [cachedValue, cachedAt] = cache.get(hash) as [Return, number];
+            if (now - cachedAt <= cacheDuration) {
+              console.log(`Exiting getter ${String(context.name)}.`);
+              return cachedValue;
+            }
+            cache.delete(hash);
           }
-          cache.delete(hash);
-        }
 
-        const result = (target as (this: This) => Return).call(this);
-        if (cache.size >= maxCachedArgsSize) {
-          const oldestKey = cache.keys().next().value as string;
-          cache.delete(oldestKey);
-        }
-        cache.set(hash, [result, now]);
-
-        console.log(`Exiting getter ${String(context.name)}.`);
-        return result;
-      };
-    } else {
-      const cache = new Map<string, [Return, number]>();
-      caches?.push(cache);
-
-      return function (this: This, ...args: Args): Return {
-        console.log(`Entering ${context ? `method ${String(context.name)}` : 'function'}(${calcHash(this, args)}).`);
-
-        const hash = calcHash(this, args);
-        const now = Date.now();
-
-        if (cache.has(hash)) {
-          const [cachedValue, cachedAt] = cache.get(hash) as [Return, number];
-          if (now - cachedAt <= cacheDuration) {
-            console.log(`Exiting ${context ? `method ${String(context.name)}` : 'function'}.`);
-            return cachedValue;
+          const result = (target as (this: This) => Return).call(this);
+          if (cache.size >= maxCachedArgsSize) {
+            const oldestKey = cache.keys().next().value as string;
+            cache.delete(oldestKey);
           }
-          cache.delete(hash);
+          cache.set(hash, [result, now]);
+
+          console.log(`Exiting getter ${String(context.name)}.`);
+          return result;
         }
+      : function (this: This, ...args: Args): Return {
+          console.log(`Entering ${context ? `method ${String(context.name)}` : 'function'}(${calcHash(this, args)}).`);
 
-        const result = context
-          ? (target as (this: This, ...args: Args) => Return).call(this, ...args)
-          : (target as (...args: Args) => Return)(...args);
+          const hash = calcHash(this, args);
+          const now = Date.now();
 
-        if (cache.size >= maxCachedArgsSize) {
-          const oldestKey = cache.keys().next().value as string;
-          cache.delete(oldestKey);
-        }
-        cache.set(hash, [result, now]);
+          if (cache.has(hash)) {
+            const [cachedValue, cachedAt] = cache.get(hash) as [Return, number];
+            if (now - cachedAt <= cacheDuration) {
+              console.log(`Exiting ${context ? `method ${String(context.name)}` : 'function'}.`);
+              return cachedValue;
+            }
+            cache.delete(hash);
+          }
 
-        console.log(`Exiting ${context ? `method ${String(context.name)}` : 'function'}.`);
-        return result;
-      };
-    }
+          const result = context
+            ? (target as (this: This, ...args: Args) => Return).call(this, ...args)
+            : (target as (...args: Args) => Return)(...args);
+
+          if (cache.size >= maxCachedArgsSize) {
+            const oldestKey = cache.keys().next().value as string;
+            cache.delete(oldestKey);
+          }
+          cache.set(hash, [result, now]);
+
+          console.log(`Exiting ${context ? `method ${String(context.name)}` : 'function'}.`);
+          return result;
+        };
   };
 }
