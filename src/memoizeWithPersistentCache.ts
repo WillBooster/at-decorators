@@ -1,4 +1,4 @@
-import { sha3_512 } from './hash.js';
+import { calcHashWithContext } from './caclHash.js';
 
 /**
  * Factory function to create a memoize function with custom cache sizes.
@@ -19,7 +19,7 @@ import { sha3_512 } from './hash.js';
 export function memoizeWithPersistentCacheFactory({
   cacheDuration = Number.POSITIVE_INFINITY,
   caches,
-  calcHash = (self, args) => sha3_512(JSON.stringify([self, args])),
+  calcHash = calcHashWithContext,
   maxCacheSizePerTarget = 100,
   persistCache,
   removeCache,
@@ -27,7 +27,7 @@ export function memoizeWithPersistentCacheFactory({
 }: {
   cacheDuration?: number;
   caches?: Map<string, [unknown, number]>[];
-  calcHash?: (self: unknown, args: unknown) => string;
+  calcHash?: (self: unknown, args: unknown[]) => string;
   maxCacheSizePerTarget?: number;
   persistCache: (persistentKey: string, hash: string, value: unknown, currentTime: number) => void;
   removeCache: (persistentKey: string, hash: string) => void;
