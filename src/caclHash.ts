@@ -1,4 +1,5 @@
 import { sha3_512 } from './hash.js';
+import { stringify } from './oson/stringify.js';
 
 /**
  * Calculates a hash value for the given context and arguments using SHA3-512.
@@ -9,7 +10,7 @@ import { sha3_512 } from './hash.js';
  * @returns A SHA3-512 hash of the stringified context and arguments
  */
 export function calcHashWithContext(self: unknown, args: unknown[]): string {
-  return sha3_512(JSON.stringify([self, args]));
+  return sha3_512(stringify([self, args]));
 }
 
 /**
