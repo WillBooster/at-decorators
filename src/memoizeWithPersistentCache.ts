@@ -112,7 +112,7 @@ export function memoizeWithPersistentCacheFactory({
               }
             }
 
-            return result as Return;
+            return result;
           }
         : function (this: This, ...args: { [K in keyof Args]: Args[K] }) {
             const hash = getCacheKey(this, args);
