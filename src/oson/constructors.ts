@@ -87,10 +87,10 @@ function globalConstructorMap(): ConstructorMap {
     // eslint-disable-next-line unicorn/error-message
     stub: () => new Error(),
     hydrate: (err, [name, message, stack, cause]) => {
-      err.name = name;
-      err.message = message;
+      err.name = name as string;
+      err.message = message as string;
       if (stack === undefined) delete err.stack;
-      else err.stack = stack;
+      else err.stack = stack as string;
       if (cause !== undefined) err.cause = cause;
     },
   };
@@ -109,6 +109,7 @@ function globalConstructorMap(): ConstructorMap {
   };
   const set: BucketContructor<Set<any>, any[]> = {
     instance: Set,
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-return
     from: (s) => [...s.values()],
     stub: () => new Set(),
     hydrate: (s, values) => {
@@ -130,9 +131,5 @@ function globalConstructorMap(): ConstructorMap {
     from: (url) => [url.href],
     create: ([href]) => new URL(href),
   };
-
-  const res: ConstructorMap = new Map();
-  const constructors = [error, uint8Array, map, set, date, regex, url];
-  for (const c of constructors) res.set(c.instance.name, c);
-  return res;
+  return new Map([error, uint8Array, map, set, date, regex, url].map((c) => [c.instance.name, c]));
 }
