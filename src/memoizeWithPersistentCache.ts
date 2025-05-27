@@ -1,4 +1,4 @@
-import { calcHashWithContext } from './caclHash.js';
+import { getCacheKeyOfHash } from './getCacheKey.js';
 
 /**
  * Factory function to create a memoize function with custom cache sizes.
@@ -9,7 +9,7 @@ import { calcHashWithContext } from './caclHash.js';
  * @param {Object} options - The options for the memoize function.
  * @param {number} [options.maxCacheSizePerTarget=100] - The maximum number of distinct values that can be cached.
  * @param {number} [options.cacheDuration=Number.POSITIVE_INFINITY] - The maximum number of milliseconds that a cached value is valid.
- * @param {Function} [options.calcHash] - A function to calculate the hash for a given context and arguments. Defaults to hashing the stringified context and arguments.
+ * @param {Function} [options.getCacheKey] - A function to calculate the cache key for a given context and arguments. Defaults to hashing the stringified context and arguments.
  * @param {Map<string, [unknown, number]>[]} [options.caches] - An array of maps to store cached values.
  * @param {Function} options.persistCache - A function to store cached values with current time persistently.
  * @param {Function} options.tryReadingCache - A function to try reading cached values from persistent storage.
@@ -19,7 +19,7 @@ import { calcHashWithContext } from './caclHash.js';
 export function memoizeWithPersistentCacheFactory({
   cacheDuration = Number.POSITIVE_INFINITY,
   caches,
-  calcHash = calcHashWithContext,
+  getCacheKey = getCacheKeyOfHash,
   maxCacheSizePerTarget = 100,
   persistCache,
   removeCache,
@@ -27,7 +27,7 @@ export function memoizeWithPersistentCacheFactory({
 }: {
   cacheDuration?: number;
   caches?: Map<string, [unknown, number]>[];
-  calcHash?: (self: unknown, args: unknown[]) => string;
+  getCacheKey?: (self: unknown, args: unknown[]) => string;
   maxCacheSizePerTarget?: number;
   persistCache: (persistentKey: string, hash: string, value: unknown, currentTime: number) => void;
   removeCache: (persistentKey: string, hash: string) => void;
@@ -46,7 +46,7 @@ export function memoizeWithPersistentCacheFactory({
 
       return context?.kind === 'getter'
         ? function (this: This) {
-            const hash = calcHash(this, []);
+            const hash = getCacheKey(this, []);
             const now = Date.now();
 
             // Check in-memory cache first
@@ -115,7 +115,7 @@ export function memoizeWithPersistentCacheFactory({
             return result as Return;
           }
         : function (this: This, ...args: { [K in keyof Args]: Args[K] }) {
-            const hash = calcHash(this, args);
+            const hash = getCacheKey(this, args);
             const now = Date.now();
 
             // Check in-memory cache first

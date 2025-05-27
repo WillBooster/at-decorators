@@ -1,4 +1,4 @@
-import { calcHashWithContext } from './caclHash.js';
+import { getCacheKeyOfHash } from './getCacheKey.js';
 
 /**
  * A memoization decorator/function that caches the results of method/getter/function calls to improve performance.
@@ -26,19 +26,19 @@ export const memoize = memoizeFactory();
  * @param {Object} options - The options for the memoize function.
  * @param {number} [options.maxCacheSizePerTarget=100] - The maximum number of distinct values that can be cached.
  * @param {number} [options.cacheDuration=Number.POSITIVE_INFINITY] - The maximum number of milliseconds that a cached value is valid.
- * @param {Function} [options.calcHash] - A function to calculate the hash for a given context and arguments. Defaults to hashing the stringified context and arguments.
+ * @param {Function} [options.getCacheKey] - A function to calculate the cache key for a given context and arguments. Defaults to hashing the stringified context and arguments.
  * @param {Map<string, [unknown, number]>[]} [options.caches] - An array of maps to store cached values. Useful for tracking and clearing caches externally.
  * @returns {Function} A new memoize function with the specified cache settings.
  */
 export function memoizeFactory({
   cacheDuration = Number.POSITIVE_INFINITY,
   caches,
-  calcHash = calcHashWithContext,
+  getCacheKey = getCacheKeyOfHash,
   maxCacheSizePerTarget = 100,
 }: {
   cacheDuration?: number;
   caches?: Map<string, [unknown, number]>[];
-  calcHash?: (self: unknown, args: unknown[]) => string;
+  getCacheKey?: (self: unknown, args: unknown[]) => string;
   maxCacheSizePerTarget?: number;
 } = {}) {
   return function memoize<This, Args extends unknown[], Return>(
@@ -52,7 +52,7 @@ export function memoizeFactory({
 
     return context?.kind === 'getter'
       ? function (this: This) {
-          const hash = calcHash(this, []);
+          const hash = getCacheKey(this, []);
           const now = Date.now();
 
           if (cache.has(hash)) {
@@ -73,7 +73,7 @@ export function memoizeFactory({
           return result;
         }
       : function (this: This, ...args: Args) {
-          const hash = calcHash(this, args);
+          const hash = getCacheKey(this, args);
           const now = Date.now();
 
           if (cache.has(hash)) {

@@ -1,4 +1,4 @@
-import { calcEmptyHash, calcHashWithContext } from './caclHash.js';
+import { getCacheKeyOfEmptyString, getCacheKeyOfHash } from './getCacheKey.js';
 
 /**
  * A memoization decorator/function that caches the results of the latest method/getter/function call to improve performance.
@@ -15,7 +15,7 @@ import { calcEmptyHash, calcHashWithContext } from './caclHash.js';
  *
  * @returns {Function} A new function that wraps the original method or getter, function with caching logic.
  */
-export const memoizeOne = memoizeOneFactory({ calcHash: calcHashWithContext });
+export const memoizeOne = memoizeOneFactory({ getCacheKey: getCacheKeyOfHash });
 
 /**
  * A memoization decorator/function that caches the results of the latest method/getter/function call to improve performance.
@@ -32,14 +32,14 @@ export const memoizeOne = memoizeOneFactory({ calcHash: calcHashWithContext });
  *
  * @returns {Function} A new function that wraps the original method or getter, function with caching logic.
  */
-export const memoizeOneWithEmptyHash = memoizeOneFactory({ calcHash: calcEmptyHash });
+export const memoizeOneWithEmptyHash = memoizeOneFactory({ getCacheKey: getCacheKeyOfEmptyString });
 
 /**
  * A factory function to create a memoizeOne function with custom cache settings.
  *
  * @param {Object} options - The options for the memoizeOne function.
  * @param {number} [options.cacheDuration=Number.POSITIVE_INFINITY] - The maximum number of milliseconds that a cached value is valid.
- * @param {Function} [options.calcHash=calcHashWithContext] - A function to calculate the hash for a given context and arguments. Defaults to hashing the stringified context and arguments.
+ * @param {Function} [options.getCacheKey=getCacheKeyWithContext] - A function to calculate the cache key for a given context and arguments. Defaults to hashing the stringified context and arguments.
  *
  * @returns {Function} A memoizeOne function with the specified cache settings.
  * @template This - The type of the `this` context within the method, getter or function.
@@ -48,8 +48,8 @@ export const memoizeOneWithEmptyHash = memoizeOneFactory({ calcHash: calcEmptyHa
  */
 export function memoizeOneFactory({
   cacheDuration = Number.POSITIVE_INFINITY,
-  calcHash = calcHashWithContext,
-}: { cacheDuration?: number; calcHash?: (self: unknown, args: unknown[]) => string } = {}) {
+  getCacheKey = getCacheKeyOfHash,
+}: { cacheDuration?: number; getCacheKey?: (self: unknown, args: unknown[]) => string } = {}) {
   return function <This, Args extends unknown[], Return>(
     target: ((this: This, ...args: Args) => Return) | ((...args: Args) => Return) | keyof This,
     context?:
@@ -62,7 +62,7 @@ export function memoizeOneFactory({
 
     return context?.kind === 'getter'
       ? function (this: This) {
-          const hash = calcHash(this, []);
+          const hash = getCacheKey(this, []);
           const now = Date.now();
           if (lastHash !== hash || now - lastCachedAt > cacheDuration) {
             lastHash = hash;
@@ -72,7 +72,7 @@ export function memoizeOneFactory({
           return lastCache;
         }
       : function (this: This, ...args: Args) {
-          const hash = calcHash(this, args);
+          const hash = getCacheKey(this, args);
           const now = Date.now();
           if (lastHash !== hash || now - lastCachedAt > cacheDuration) {
             lastHash = hash;
