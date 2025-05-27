@@ -37,6 +37,7 @@ describe('persistent cache', () => {
 
     @memoize('Random.asyncNextInteger')
     async asyncNextInteger(): Promise<number> {
+      await setTimeout(0);
       return getNextInteger();
     }
   }
@@ -149,10 +150,12 @@ describe('error handling in cache operations', () => {
 });
 
 async function asyncErrorThrowingPersistCache(): Promise<never> {
+  await setTimeout(0);
   throw new Error('Persist error');
 }
 
 async function asyncErrorThrowingRemoveCache(): Promise<never> {
+  await setTimeout(0);
   throw new Error('Remove error');
 }
 
@@ -165,6 +168,7 @@ describe('async error handling in cache operations', () => {
   })('nextInteger')((base: number = 1): number => base + getNextInteger());
 
   test('ignore errors in async persistCache, non-async tryReadingCache and async removeCache', async () => {
+    await setTimeout(0);
     expect(() => nextIntegerWithAsyncErrorHandling(100)).not.toThrow();
   });
 });

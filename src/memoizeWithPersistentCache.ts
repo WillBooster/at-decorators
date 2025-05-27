@@ -29,8 +29,8 @@ export function memoizeWithPersistentCacheFactory({
   caches?: Map<string, [unknown, number]>[];
   getCacheKey?: (self: unknown, args: unknown[]) => string;
   maxCacheSizePerTarget?: number;
-  persistCache: (persistentKey: string, hash: string, value: unknown, currentTime: number) => void;
-  removeCache: (persistentKey: string, hash: string) => void;
+  persistCache: (persistentKey: string, hash: string, value: unknown, currentTime: number) => unknown;
+  removeCache: (persistentKey: string, hash: string) => unknown;
   tryReadingCache: (persistentKey: string, hash: string) => [unknown, number] | undefined;
 }) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -58,7 +58,7 @@ export function memoizeWithPersistentCacheFactory({
 
               cache.delete(hash);
               try {
-                const promise = removeCache(persistentKey, hash) as unknown;
+                const promise = removeCache(persistentKey, hash);
                 if (promise instanceof Promise) promise.catch(noop);
               } catch {
                 // do nothing.
@@ -75,7 +75,7 @@ export function memoizeWithPersistentCacheFactory({
                   return cachedValue as Return;
                 }
 
-                const promise = removeCache(persistentKey, hash) as unknown;
+                const promise = removeCache(persistentKey, hash);
                 if (promise instanceof Promise) promise.catch(noop);
               }
             } catch {
@@ -87,7 +87,7 @@ export function memoizeWithPersistentCacheFactory({
               const oldestKey = cache.keys().next().value as string;
               cache.delete(oldestKey);
               try {
-                const promise = removeCache(persistentKey, oldestKey) as unknown;
+                const promise = removeCache(persistentKey, oldestKey);
                 if (promise instanceof Promise) promise.catch(noop);
               } catch {
                 // do nothing.
@@ -97,7 +97,7 @@ export function memoizeWithPersistentCacheFactory({
             if (result instanceof Promise) {
               void (async () => {
                 try {
-                  const promise = persistCache(persistentKey, hash, await result, now) as unknown;
+                  const promise = persistCache(persistentKey, hash, await result, now);
                   if (promise instanceof Promise) promise.catch(noop);
                 } catch {
                   // do nothing.
@@ -105,14 +105,14 @@ export function memoizeWithPersistentCacheFactory({
               })();
             } else {
               try {
-                const promise = persistCache(persistentKey, hash, result, now) as unknown;
+                const promise = persistCache(persistentKey, hash, result, now);
                 if (promise instanceof Promise) promise.catch(noop);
               } catch {
                 // do nothing.
               }
             }
 
-            return result as Return;
+            return result;
           }
         : function (this: This, ...args: { [K in keyof Args]: Args[K] }) {
             const hash = getCacheKey(this, args);
@@ -127,7 +127,7 @@ export function memoizeWithPersistentCacheFactory({
 
               cache.delete(hash);
               try {
-                const promise = removeCache(persistentKey, hash) as unknown;
+                const promise = removeCache(persistentKey, hash);
                 if (promise instanceof Promise) promise.catch(noop);
               } catch {
                 // do nothing.
@@ -144,7 +144,7 @@ export function memoizeWithPersistentCacheFactory({
                   return cachedValue as Return;
                 }
 
-                const promise = removeCache(persistentKey, hash) as unknown;
+                const promise = removeCache(persistentKey, hash);
                 if (promise instanceof Promise) promise.catch(noop);
               }
             } catch {
@@ -159,7 +159,7 @@ export function memoizeWithPersistentCacheFactory({
               const oldestKey = cache.keys().next().value as string;
               cache.delete(oldestKey);
               try {
-                const promise = removeCache(persistentKey, oldestKey) as unknown;
+                const promise = removeCache(persistentKey, oldestKey);
                 if (promise instanceof Promise) promise.catch(noop);
               } catch {
                 // do nothing.
@@ -169,7 +169,7 @@ export function memoizeWithPersistentCacheFactory({
             if (result instanceof Promise) {
               void (async () => {
                 try {
-                  const promise = persistCache(persistentKey, hash, await result, now) as unknown;
+                  const promise = persistCache(persistentKey, hash, await result, now);
                   if (promise instanceof Promise) promise.catch(noop);
                 } catch {
                   // do nothing.
@@ -177,7 +177,7 @@ export function memoizeWithPersistentCacheFactory({
               })();
             } else {
               try {
-                const promise = persistCache(persistentKey, hash, result, now) as unknown;
+                const promise = persistCache(persistentKey, hash, result, now);
                 if (promise instanceof Promise) promise.catch(noop);
               } catch {
                 // do nothing.
