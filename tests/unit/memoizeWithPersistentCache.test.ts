@@ -161,10 +161,8 @@ async function asyncErrorThrowingRemoveCache(): Promise<never> {
 
 describe('async error handling in cache operations', () => {
   const nextIntegerWithAsyncErrorHandling = memoizeWithPersistentCacheFactory({
-    // eslint-disable-next-line @typescript-eslint/no-misused-promises
     persistCache: asyncErrorThrowingPersistCache,
     tryReadingCache: errorThrowingTryReadingCache,
-    // eslint-disable-next-line @typescript-eslint/no-misused-promises
     removeCache: asyncErrorThrowingRemoveCache,
     cacheDuration: 200,
   })('nextInteger')((base: number = 1): number => base + getNextInteger());
