@@ -169,9 +169,8 @@ export function listify<C = any>(value: unknown, constructors: ConstructorMap<C>
           const arr: OsonArray = sparse(value.length);
           list[position] = arr;
           index.set(value, position);
-          // eslint-disable-next-line @typescript-eslint/no-for-in-array
-          for (const i in value) {
-            arr[i] = add(value[i]);
+          for (const [i, element] of value.entries()) {
+            arr[i] = add(element);
           }
         } else {
           const [label, vals] = fromObject(value, constructors);
