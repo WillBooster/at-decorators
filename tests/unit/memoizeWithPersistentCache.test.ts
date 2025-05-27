@@ -150,12 +150,12 @@ describe('error handling in cache operations', () => {
 });
 
 async function asyncErrorThrowingPersistCache(): Promise<never> {
-  await Promise.resolve();
+  await setTimeout(0);
   throw new Error('Persist error');
 }
 
 async function asyncErrorThrowingRemoveCache(): Promise<never> {
-  await Promise.resolve();
+  await setTimeout(0);
   throw new Error('Remove error');
 }
 
