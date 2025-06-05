@@ -24,7 +24,7 @@ export const memoize = memoizeFactory();
  * @template Args - The types of the arguments to the method, getter or function.
  * @template Return - The return type of the method, getter or function.
  * @param {Object} options - The options for the memoize function.
- * @param {number} [options.maxCacheSizePerTarget=100] - The maximum number of distinct values that can be cached.
+ * @param {number} [options.maxCacheSizePerTarget=10000] - The maximum number of distinct values that can be cached.
  * @param {number} [options.cacheDuration=Number.POSITIVE_INFINITY] - The maximum number of milliseconds that a cached value is valid.
  * @param {Function} [options.getCacheKey] - A function to calculate the cache key for a given context and arguments. Defaults to hashing the stringified context and arguments.
  * @param {Map<string, [unknown, number]>[]} [options.caches] - An array of maps to store cached values. Useful for tracking and clearing caches externally.
@@ -34,7 +34,7 @@ export function memoizeFactory({
   cacheDuration = Number.POSITIVE_INFINITY,
   caches,
   getCacheKey = getCacheKeyOfHash,
-  maxCacheSizePerTarget = 100,
+  maxCacheSizePerTarget = 10_000,
 }: {
   cacheDuration?: number;
   caches?: Map<string, [unknown, number]>[];
