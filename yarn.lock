@@ -2612,9 +2612,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@rollup/plugin-commonjs@npm:28.0.3":
-  version: 28.0.3
-  resolution: "@rollup/plugin-commonjs@npm:28.0.3"
+"@rollup/plugin-commonjs@npm:28.0.5":
+  version: 28.0.5
+  resolution: "@rollup/plugin-commonjs@npm:28.0.5"
   dependencies:
     "@rollup/pluginutils": "npm:^5.0.1"
     commondir: "npm:^1.0.1"
@@ -2628,7 +2628,7 @@ __metadata:
   peerDependenciesMeta:
     rollup:
       optional: true
-  checksum: 10c0/0dbc61a5a894cdf526c3f0a738243cf1b3f634d592db0f2b9cad8c5d8e4c3e645d9b7ac19761c07a8a475118cafa6cdef4746111019388dd6e962f7373878ea4
+  checksum: 10c0/257b53477bcd3f1ec9e7105aa18d9529bb6b5e737cd365010ff08048657ee38457c996577e8982a9a9a285a9f15947462f048c191b03d2e0ab17b3b15dcd5162
   languageName: node
   linkType: hard
 
@@ -3947,7 +3947,7 @@ __metadata:
     "@types/jest": "npm:29.5.14"
     "@willbooster/eslint-config-ts": "npm:11.2.0"
     "@willbooster/prettier-config": "npm:10.0.0"
-    build-ts: "npm:15.0.4"
+    build-ts: "npm:15.0.5"
     conventional-changelog-conventionalcommits: "npm:9.0.0"
     eslint: "npm:9.28.0"
     eslint-config-flat-gitignore: "npm:2.1.0"
@@ -4232,9 +4232,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"build-ts@npm:15.0.4":
-  version: 15.0.4
-  resolution: "build-ts@npm:15.0.4"
+"build-ts@npm:15.0.5":
+  version: 15.0.5
+  resolution: "build-ts@npm:15.0.5"
   dependencies:
     "@babel/core": "npm:7.27.4"
     "@babel/plugin-proposal-decorators": "npm:7.27.1"
@@ -4245,7 +4245,7 @@ __metadata:
     "@babel/preset-react": "npm:7.27.1"
     "@babel/preset-typescript": "npm:7.27.1"
     "@rollup/plugin-babel": "npm:6.0.4"
-    "@rollup/plugin-commonjs": "npm:28.0.3"
+    "@rollup/plugin-commonjs": "npm:28.0.5"
     "@rollup/plugin-json": "npm:6.1.0"
     "@rollup/plugin-node-resolve": "npm:16.0.1"
     "@rollup/plugin-replace": "npm:6.0.2"
@@ -4272,7 +4272,7 @@ __metadata:
     yargs: "npm:18.0.0"
   bin:
     build-ts: bin/index.js
-  checksum: 10c0/f7cbb9757d0d66cb8b0575e2b517ae0fe7139e1f309af00c20bcc44dae53c157862aea20207f7ee11b916688dbf66235f49b5a2f1d25666d06bd6bd1fc5322b8
+  checksum: 10c0/6b58617c746ec448e7bf413e0792a57ef3703c6ebafeea6ab06ee5e2042fa94c1a2bd1cd6accfedc7464962f49509b378edb869adbb8e9976315ac568ec11ed8
   languageName: node
   linkType: hard
 
