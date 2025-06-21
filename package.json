@@ -38,7 +38,7 @@
   "prettier": "@willbooster/prettier-config",
   "devDependencies": {
     "@types/eslint": "8.56.11",
-    "@types/jest": "29.5.14",
+    "@types/jest": "30.0.0",
     "@willbooster/eslint-config-ts": "11.2.0",
     "@willbooster/prettier-config": "10.0.0",
     "build-ts": "15.0.5",
