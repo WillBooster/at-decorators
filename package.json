@@ -54,7 +54,7 @@
     "eslint-plugin-unused-imports": "4.1.4",
     "globals": "16.2.0",
     "husky": "9.1.7",
-    "jest": "30.0.0",
+    "jest": "30.0.2",
     "lint-staged": "16.1.2",
     "micromatch": "4.0.8",
     "pinst": "3.0.0",
