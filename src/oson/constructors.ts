@@ -99,7 +99,7 @@ function globalConstructorMap(): ConstructorMap {
     from: (arr) => [btoa(dec8.decode(arr))],
     create: ([data]) => enc.encode(atob(data)),
   };
-  const map: BucketContructor<Map<any, any>, Array<[any, any]>> = {
+  const map: BucketContructor<Map<any, any>, [any, any][]> = {
     instance: Map,
     from: (m) => [...m.entries()],
     stub: () => new Map(),
