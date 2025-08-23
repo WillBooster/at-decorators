@@ -40,7 +40,7 @@
   "devDependencies": {
     "@types/eslint": "8.56.11",
     "@types/jest": "30.0.0",
-    "@willbooster/eslint-config-ts": "11.4.1",
+    "@willbooster/eslint-config-ts": "11.4.5",
     "@willbooster/prettier-config": "10.2.0",
     "build-ts": "15.0.21",
     "conventional-changelog-conventionalcommits": "9.1.0",
