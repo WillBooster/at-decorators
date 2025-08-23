@@ -3832,7 +3832,7 @@ __metadata:
     "@types/jest": "npm:30.0.0"
     "@willbooster/eslint-config-ts": "npm:11.4.1"
     "@willbooster/prettier-config": "npm:10.2.0"
-    build-ts: "npm:15.0.21"
+    build-ts: "npm:15.1.0"
     conventional-changelog-conventionalcommits: "npm:9.1.0"
     eslint: "npm:9.32.0"
     eslint-config-flat-gitignore: "npm:2.1.0"
@@ -4106,9 +4106,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"build-ts@npm:15.0.21":
-  version: 15.0.21
-  resolution: "build-ts@npm:15.0.21"
+"build-ts@npm:15.1.0":
+  version: 15.1.0
+  resolution: "build-ts@npm:15.1.0"
   dependencies:
     "@babel/core": "npm:7.28.3"
     "@babel/plugin-proposal-decorators": "npm:7.28.0"
@@ -4146,7 +4146,7 @@ __metadata:
     yargs: "npm:18.0.0"
   bin:
     build-ts: bin/index.js
-  checksum: 10c0/2caa9f5b9bfd32a3c6e5ada5dbb18b8751135452d7738af2a0d7c52b237a0142bb33d4ad557e6f1a8b389eaf132479774ddd30f64b6922b60e34e84c538aeb95
+  checksum: 10c0/922ffa23e417e83b353fd01eda0862d3ed318c9fd2c9877a847ebda9832107a11ae46a621a1046a65ddcc85fa18a4300d3005f6a142ec99858a7e50218cfae96
   languageName: node
   linkType: hard
 
