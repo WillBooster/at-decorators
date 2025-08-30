@@ -40,14 +40,16 @@ describe('memory cache', () => {
   const random1 = new RandomChild();
   const random2 = new RandomChild(10);
 
-  const nextInteger1 = memoize((base: number = 1): number => base + getNextInteger());
+  const nextInteger1 = memoize((base = 1): number => (base as number) + getNextInteger());
   const nextInteger2 = memoizeFactory({ maxCacheSizePerTarget: 10, cacheDuration: -1 })(
-    (base: number = 1): number => base + getNextInteger()
+    (base = 1): number => (base as number) + getNextInteger()
   );
-  const nextInteger3 = memoizeFactory({ cacheDuration: 200 })((base: number = 1): number => base + getNextInteger());
-  const asyncNextInteger = memoize(async (base: number = 1): Promise<number> => {
+  const nextInteger3 = memoizeFactory({ cacheDuration: 200 })(
+    (base = 1): number => (base as number) + getNextInteger()
+  );
+  const asyncNextInteger = memoize(async (base = 1): Promise<number> => {
     await setTimeout(1);
-    return base + getNextInteger();
+    return (base as number) + getNextInteger();
   });
 
   test('memoize function with decorator', () => {
@@ -136,7 +138,7 @@ describe('memory cache', () => {
   test('memoizeOneValue', () => {
     const k = new Klass();
     expect(k.obj).toEqual({});
-    k.obj['a'] = 'b';
+    k.obj.a = 'b';
     expect(k.obj).toEqual({ a: 'b' });
   });
 });

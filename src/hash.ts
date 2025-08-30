@@ -28,7 +28,12 @@
  * @license MIT
  */
 
+/* eslint-disable @typescript-eslint/restrict-plus-operands */
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-nocheck
+
 const FINALIZE_ERROR = 'finalize already called';
+// eslint-disable-next-line @typescript-eslint/no-misused-spread
 const HEX_CHARS = [...'0123456789abcdef'];
 const PADDING = [6, 1536, 393_216, 100_663_296];
 const SHIFT = [0, 8, 16, 24];

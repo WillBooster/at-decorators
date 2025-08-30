@@ -114,7 +114,7 @@ function fromObject(value: object, constructors: ConstructorMap): [string, unkno
   const cnt = entries.length;
   const val: unknown[] = Array.from({ length: cnt + cnt });
   for (let i = 0; i < cnt; i++) {
-    const entry = entries[i];
+    const entry = entries[i] as [string, unknown];
     const ii = i + i;
     val[ii] = entry[0];
     val[ii + 1] = entry[1];
