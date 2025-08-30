@@ -34,19 +34,19 @@ export type DecomposableConstructor<C, V = any> = {
   instance: new () => C;
   /** converts an instance to a value array */
   from(instance: C): V[];
-}
+};
 /** a serializer for a value that does not contain nested values */
 export type ValueConstructor<C, V = any> = {
   /** creates a class from a value array */
   create(val: V[]): C;
-} & DecomposableConstructor<C, V>
+} & DecomposableConstructor<C, V>;
 
 export type BucketContructor<C, V = any> = {
   /** stubs a class instance that can be re-hydrated */
   stub: () => C;
   /** re-hydrates a class instance with its nested values */
   hydrate: (stub: C, val: V[]) => void;
-} & DecomposableConstructor<C, V>
+} & DecomposableConstructor<C, V>;
 
 /** label for plain JS object types */
 export const PLAIN_OBJECT_LABEL = '';
@@ -97,7 +97,7 @@ function globalConstructorMap(): ConstructorMap {
   const uint8Array: ValueConstructor<Uint8Array, string> = {
     instance: Uint8Array,
     from: (arr) => [btoa(dec8.decode(arr))],
-    create: ([data]) => enc.encode(atob(data)),
+    create: ([data]) => enc.encode(atob(data as string)),
   };
   const map: BucketContructor<Map<any, any>, [any, any][]> = {
     instance: Map,
@@ -119,17 +119,17 @@ function globalConstructorMap(): ConstructorMap {
   const date: ValueConstructor<Date, string> = {
     instance: Date,
     from: (d) => [d.toJSON()],
-    create: ([json]) => new Date(json),
+    create: ([json]) => new Date(json as string),
   };
   const regex: ValueConstructor<RegExp, string> = {
     instance: RegExp as unknown as new () => RegExp,
     from: ({ flags, source }) => (flags ? [source, flags] : [source]),
-    create: ([source, flags]) => new RegExp(source, flags),
+    create: ([source, flags]) => new RegExp(source as string, flags),
   };
   const url: ValueConstructor<URL, string> = {
     instance: URL as unknown as new () => URL,
     from: (url) => [url.href],
-    create: ([href]) => new URL(href),
+    create: ([href]) => new URL(href as string),
   };
   return new Map([error, uint8Array, map, set, date, regex, url].map((c) => [c.instance.name, c]));
 }
