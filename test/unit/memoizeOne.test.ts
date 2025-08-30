@@ -36,18 +36,18 @@ describe('memoizeOne with getCacheKey which includes this and arguments', () => 
   const random1 = new RandomChild();
   const random2 = new RandomChild(10);
 
-  const nextInteger1 = memoizeOne((base: number = 1): number => base + getNextInteger());
+  const nextInteger1 = memoizeOne((base = 1): number => (base as number) + getNextInteger());
   const nextInteger2 = memoizeOneFactory({
     cacheDuration: -1,
     getCacheKey: getCacheKeyOfHash,
-  })((base: number = 1): number => base + getNextInteger());
+  })((base = 1): number => (base as number) + getNextInteger());
   const nextInteger3 = memoizeOneFactory({
     cacheDuration: 200,
     getCacheKey: getCacheKeyOfHash,
-  })((base: number = 1): number => base + getNextInteger());
-  const asyncNextInteger1 = memoizeOne(async (base: number = 1): Promise<number> => {
+  })((base = 1): number => (base as number) + getNextInteger());
+  const asyncNextInteger1 = memoizeOne(async (base = 1): Promise<number> => {
     await setTimeout(1);
-    return base + getNextInteger();
+    return (base as number) + getNextInteger();
   });
 
   test.each([
@@ -134,16 +134,16 @@ describe('memoizeOneWithEmptyHash (memoizeOne with empty hash)', () => {
   const random1 = new RandomChild();
   const random2 = new RandomChild(10);
 
-  const nextInteger1 = memoizeOneWithEmptyHash((base: number = 1): number => base + getNextInteger());
+  const nextInteger1 = memoizeOneWithEmptyHash((base = 1): number => (base as number) + getNextInteger());
   const nextInteger2 = memoizeOneFactory({ cacheDuration: -1, getCacheKey: getCacheKeyOfEmptyString })(
-    (base: number = 1): number => base + getNextInteger()
+    (base = 1): number => (base as number) + getNextInteger()
   );
   const nextInteger3 = memoizeOneFactory({ cacheDuration: 200, getCacheKey: getCacheKeyOfEmptyString })(
-    (base: number = 1): number => base + getNextInteger()
+    (base = 1): number => (base as number) + getNextInteger()
   );
-  const asyncNextInteger1 = memoizeOneWithEmptyHash(async (base: number = 1): Promise<number> => {
+  const asyncNextInteger1 = memoizeOneWithEmptyHash(async (base = 1): Promise<number> => {
     await setTimeout(1);
-    return base + getNextInteger();
+    return (base as number) + getNextInteger();
   });
 
   test('memoize function with decorator', () => {
