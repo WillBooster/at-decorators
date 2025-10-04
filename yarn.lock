@@ -3632,13 +3632,13 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@willbooster/shared-lib-node@npm:7.0.6":
-  version: 7.0.6
-  resolution: "@willbooster/shared-lib-node@npm:7.0.6"
+"@willbooster/shared-lib-node@npm:7.0.7":
+  version: 7.0.7
+  resolution: "@willbooster/shared-lib-node@npm:7.0.7"
   dependencies:
-    dotenv: "npm:17.2.2"
+    dotenv: "npm:17.2.3"
     tree-kill: "npm:1.2.2"
-  checksum: 10c0/9a27639b325883f0fa4bb3ecc12002e1516bac8d9d99b26285f2d4439f45d1df490c4a703e17b50f27458adffb204325ca9da539844dab6667b2b6cc370433f8
+  checksum: 10c0/56c5a57e53fb8ff5810d26c71d0bbd8b25356a311b27c4906e262ed4e03ff07625ac59778ec2bf8f1b24a3886ce515fc8e07973cef6fa9d3533575a1a22350f5
   languageName: node
   linkType: hard
 
@@ -3836,7 +3836,7 @@ __metadata:
     "@types/jest": "npm:30.0.0"
     "@willbooster/eslint-config-ts": "npm:11.4.6"
     "@willbooster/prettier-config": "npm:10.2.0"
-    build-ts: "npm:16.0.7"
+    build-ts: "npm:16.0.8"
     conventional-changelog-conventionalcommits: "npm:9.1.0"
     eslint: "npm:9.36.0"
     eslint-config-flat-gitignore: "npm:2.1.0"
@@ -4118,9 +4118,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"build-ts@npm:16.0.7":
-  version: 16.0.7
-  resolution: "build-ts@npm:16.0.7"
+"build-ts@npm:16.0.8":
+  version: 16.0.8
+  resolution: "build-ts@npm:16.0.8"
   dependencies:
     "@babel/core": "npm:7.28.4"
     "@babel/plugin-proposal-decorators": "npm:7.28.0"
@@ -4137,7 +4137,7 @@ __metadata:
     "@rollup/plugin-replace": "npm:6.0.2"
     "@rollup/plugin-terser": "npm:0.4.4"
     "@rollup/pluginutils": "npm:5.3.0"
-    "@willbooster/shared-lib-node": "npm:7.0.6"
+    "@willbooster/shared-lib-node": "npm:7.0.7"
     babel-plugin-polyfill-corejs3: "npm:0.13.0"
     babel-plugin-transform-remove-console: "npm:6.9.4"
     chalk: "npm:5.6.2"
@@ -4158,7 +4158,7 @@ __metadata:
     yargs: "npm:18.0.0"
   bin:
     build-ts: bin/index.js
-  checksum: 10c0/a1065c41e5d768fe0cf6af4ba9c373a836d342310cf1bc494043c672c3b4790b738bf0278d5a67b1449407f1b76493d50a3bd2218c60cda8ff6f79fe1325cc3b
+  checksum: 10c0/cccb75a9599747eb2a95dbf2f9fb12e5979651ecb686666ee96c3e260254613bcc010ed4e253240a44ba3bc61aefbb5a2bd10dbe699497dee7e28fc684d8fbeb
   languageName: node
   linkType: hard
 
@@ -4812,10 +4812,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"dotenv@npm:17.2.2":
-  version: 17.2.2
-  resolution: "dotenv@npm:17.2.2"
-  checksum: 10c0/be66513504590aff6eccb14167625aed9bd42ce80547f4fe5d195860211971a7060949b57108dfaeaf90658f79e40edccd3f233f0a978bff507b5b1565ae162b
+"dotenv@npm:17.2.3":
+  version: 17.2.3
+  resolution: "dotenv@npm:17.2.3"
+  checksum: 10c0/c884403209f713214a1b64d4d1defa4934c2aa5b0002f5a670ae298a51e3c3ad3ba79dfee2f8df49f01ae74290fcd9acdb1ab1d09c7bfb42b539036108bb2ba0
   languageName: node
   linkType: hard
 
