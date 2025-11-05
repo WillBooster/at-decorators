@@ -29,12 +29,12 @@ export type ConstructorMap<C = any> = Map<string, SerializableConstructor<C>>;
 /** a serializer for values or buckets */
 export type SerializableConstructor<C, V = any> = ValueConstructor<C, V> | BucketContructor<C, V>;
 /** common properties of all serializers */
-export type DecomposableConstructor<C, V = any> = {
+export interface DecomposableConstructor<C, V = any> {
   /** class constructor */
   instance: new () => C;
   /** converts an instance to a value array */
   from(instance: C): V[];
-};
+}
 /** a serializer for a value that does not contain nested values */
 export type ValueConstructor<C, V = any> = {
   /** creates a class from a value array */
@@ -70,7 +70,7 @@ export const PLAIN_OBJECT_LABEL = '';
 export const GLOBAL_CONSTRUCTOR_MAP: ConstructorMap = globalConstructorMap();
 
 const enc = new TextEncoder();
-const dec8 = new TextDecoder('utf8');
+const dec8 = new TextDecoder('utf-8');
 /** creates a new global constructor map as found in GLOBAL_CONSTRUCTOR_MAP */
 function globalConstructorMap(): ConstructorMap {
   const error: BucketContructor<Error> = {
