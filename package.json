@@ -1,6 +1,10 @@
 {
   "name": "at-decorators",
   "version": "0.0.0-semantically-released",
+  "description": ":wrench: A set of general-purpose decorators written in TypeScript following 'tc39/proposal-decorators (Stage 3)'.",
+  "keywords": [
+    "decorators"
+  ],
   "repository": "github:WillBooster/at-decorators",
   "license": "Apache-2.0",
   "author": "WillBooster Inc.",
