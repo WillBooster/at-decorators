@@ -1,7 +1,7 @@
 ## Project Information
 
 - Name: at-decorators
-- Description: undefined
+- Description: :wrench: A set of general-purpose decorators written in TypeScript following 'tc39/proposal-decorators (Stage 3)'.
 - Package Manager: yarn
 
 ## General Instructions
