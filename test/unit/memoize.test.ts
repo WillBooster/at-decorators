@@ -40,14 +40,12 @@ describe('memory cache', () => {
   const random1 = new RandomChild();
   const random2 = new RandomChild(10);
 
-  const nextInteger1 = memoize((base = 1): number => (base as number) + getNextInteger());
+  const nextInteger1 = memoize((base): number => (base as number) + getNextInteger());
   const nextInteger2 = memoizeFactory({ maxCacheSizePerTarget: 10, cacheDuration: -1 })(
-    (base = 1): number => (base as number) + getNextInteger()
+    (base): number => (base as number) + getNextInteger()
   );
-  const nextInteger3 = memoizeFactory({ cacheDuration: 200 })(
-    (base = 1): number => (base as number) + getNextInteger()
-  );
-  const asyncNextInteger = memoize(async (base = 1): Promise<number> => {
+  const nextInteger3 = memoizeFactory({ cacheDuration: 200 })((base): number => (base as number) + getNextInteger());
+  const asyncNextInteger = memoize(async (base): Promise<number> => {
     await setTimeout(1);
     return (base as number) + getNextInteger();
   });
