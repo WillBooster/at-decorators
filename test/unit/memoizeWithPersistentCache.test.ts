@@ -43,9 +43,7 @@ describe('persistent cache', () => {
   }
 
   const nextIntegerWithPersistence = memoize('nextInteger')((base): number => (base as number) + getNextInteger());
-  const nextIntegerWithPersistence2 = memoize('nextInteger2')(
-    (base): number => (base as number) + getNextInteger()
-  );
+  const nextIntegerWithPersistence2 = memoize('nextInteger2')((base): number => (base as number) + getNextInteger());
 
   function clearMemoryCaches(): void {
     for (const cache of caches) {
