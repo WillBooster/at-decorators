@@ -44,9 +44,7 @@ describe('memory cache', () => {
   const nextInteger2 = memoizeFactory({ maxCacheSizePerTarget: 10, cacheDuration: -1 })(
     (base): number => (base as number) + getNextInteger()
   );
-  const nextInteger3 = memoizeFactory({ cacheDuration: 200 })(
-    (base): number => (base as number) + getNextInteger()
-  );
+  const nextInteger3 = memoizeFactory({ cacheDuration: 200 })((base): number => (base as number) + getNextInteger());
   const asyncNextInteger = memoize(async (base): Promise<number> => {
     await setTimeout(1);
     return (base as number) + getNextInteger();
