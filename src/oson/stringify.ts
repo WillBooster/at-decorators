@@ -76,7 +76,7 @@ import { type ConstructorMap, GLOBAL_CONSTRUCTOR_MAP, PLAIN_OBJECT_LABEL } from 
  * @returns The string containing the encoded value
  */
 export function stringify<C = any>(
-  value: unknown = undefined,
+  value?: unknown,
   constructors: ConstructorMap<C> = GLOBAL_CONSTRUCTOR_MAP
 ): string {
   return JSON.stringify(listify(value, constructors));
