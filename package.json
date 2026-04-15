@@ -41,7 +41,7 @@
     "prepare": "lefthook install || true",
     "prettify": "prettier --cache --color --no-error-on-unmatched-pattern --write \"**/{.*/,}*.{java}\" \"!**/test{-,/}fixtures/**\" || true",
     "start": "build-ts run src/index.ts",
-    "test": "jest test/unit",
+    "test": "NODE_OPTIONS=--experimental-vm-modules jest test/unit",
     "typecheck": "tsgo --noEmit"
   },
   "devDependencies": {
