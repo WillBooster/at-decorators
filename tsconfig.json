@@ -17,8 +17,7 @@
     "sourceMap": true,
     "strict": true,
     "target": "ES2022",
-    "typeRoots": ["./node_modules/@types", "./@types"],
-    "types": ["node", "jest"]
+    "types": ["node", "vitest/globals"]
   },
   "exclude": ["test/fixtures", "packages/*/test/fixtures"],
   "extends": ["@tsconfig/node-lts/tsconfig.json", "@tsconfig/node-ts/tsconfig.json"],
