@@ -112,18 +112,18 @@ class Keccak {
         if (code < 0x80) {
           blocks[i >> 2] |= code << SHIFT[i++ & 3];
         } else if (code < 0x8_00) {
-          blocks[i >> 2] |= (0xc0 | (code >> 6)) << SHIFT[i++ & 3];
-          blocks[i >> 2] |= (0x80 | (code & 0x3f)) << SHIFT[i++ & 3];
-        } else if (code < 0xd8_00 || code >= 0xe0_00) {
-          blocks[i >> 2] |= (0xe0 | (code >> 12)) << SHIFT[i++ & 3];
-          blocks[i >> 2] |= (0x80 | ((code >> 6) & 0x3f)) << SHIFT[i++ & 3];
-          blocks[i >> 2] |= (0x80 | (code & 0x3f)) << SHIFT[i++ & 3];
+          blocks[i >> 2] |= (0xC0 | (code >> 6)) << SHIFT[i++ & 3];
+          blocks[i >> 2] |= (0x80 | (code & 0x3F)) << SHIFT[i++ & 3];
+        } else if (code < 0xD8_00 || code >= 0xE0_00) {
+          blocks[i >> 2] |= (0xE0 | (code >> 12)) << SHIFT[i++ & 3];
+          blocks[i >> 2] |= (0x80 | ((code >> 6) & 0x3F)) << SHIFT[i++ & 3];
+          blocks[i >> 2] |= (0x80 | (code & 0x3F)) << SHIFT[i++ & 3];
         } else {
-          code = 0x1_00_00 + (((code & 0x3_ff) << 10) | ((message.codePointAt(++index) || 0) & 0x3_ff));
-          blocks[i >> 2] |= (0xf0 | (code >> 18)) << SHIFT[i++ & 3];
-          blocks[i >> 2] |= (0x80 | ((code >> 12) & 0x3f)) << SHIFT[i++ & 3];
-          blocks[i >> 2] |= (0x80 | ((code >> 6) & 0x3f)) << SHIFT[i++ & 3];
-          blocks[i >> 2] |= (0x80 | (code & 0x3f)) << SHIFT[i++ & 3];
+          code = 0x1_00_00 + (((code & 0x3_FF) << 10) | ((message.codePointAt(++index) || 0) & 0x3_FF));
+          blocks[i >> 2] |= (0xF0 | (code >> 18)) << SHIFT[i++ & 3];
+          blocks[i >> 2] |= (0x80 | ((code >> 12) & 0x3F)) << SHIFT[i++ & 3];
+          blocks[i >> 2] |= (0x80 | ((code >> 6) & 0x3F)) << SHIFT[i++ & 3];
+          blocks[i >> 2] |= (0x80 | (code & 0x3F)) << SHIFT[i++ & 3];
         }
       }
       this.lastByteIndex = i;
@@ -180,14 +180,14 @@ class Keccak {
       for (i = 0; i < blockCount && j < outputBlocks; ++i, ++j) {
         block = s[i];
         hex +=
-          HEX_CHARS[(block >> 4) & 0x0f] +
-          HEX_CHARS[block & 0x0f] +
-          HEX_CHARS[(block >> 12) & 0x0f] +
-          HEX_CHARS[(block >> 8) & 0x0f] +
-          HEX_CHARS[(block >> 20) & 0x0f] +
-          HEX_CHARS[(block >> 16) & 0x0f] +
-          HEX_CHARS[(block >> 28) & 0x0f] +
-          HEX_CHARS[(block >> 24) & 0x0f];
+          HEX_CHARS[(block >> 4) & 0x0F] +
+          HEX_CHARS[block & 0x0F] +
+          HEX_CHARS[(block >> 12) & 0x0F] +
+          HEX_CHARS[(block >> 8) & 0x0F] +
+          HEX_CHARS[(block >> 20) & 0x0F] +
+          HEX_CHARS[(block >> 16) & 0x0F] +
+          HEX_CHARS[(block >> 28) & 0x0F] +
+          HEX_CHARS[(block >> 24) & 0x0F];
       }
       if (j % blockCount === 0) {
         s = cloneArray(s);
@@ -197,12 +197,12 @@ class Keccak {
     }
     if (extraBytes) {
       block = s[i];
-      hex += HEX_CHARS[(block >> 4) & 0x0f] + HEX_CHARS[block & 0x0f];
+      hex += HEX_CHARS[(block >> 4) & 0x0F] + HEX_CHARS[block & 0x0F];
       if (extraBytes > 1) {
-        hex += HEX_CHARS[(block >> 12) & 0x0f] + HEX_CHARS[(block >> 8) & 0x0f];
+        hex += HEX_CHARS[(block >> 12) & 0x0F] + HEX_CHARS[(block >> 8) & 0x0F];
       }
       if (extraBytes > 2) {
-        hex += HEX_CHARS[(block >> 20) & 0x0f] + HEX_CHARS[(block >> 16) & 0x0f];
+        hex += HEX_CHARS[(block >> 20) & 0x0F] + HEX_CHARS[(block >> 16) & 0x0F];
       }
     }
     return hex;
