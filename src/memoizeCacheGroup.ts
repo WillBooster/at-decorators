@@ -39,11 +39,44 @@ export function getGlobalMemoizeCacheStore<const Name extends string>(
   for (const name of names) {
     const cacheGroup = store[name];
     if (!Array.isArray(cacheGroup)) {
-      store[name] = [];
+      store[name] = createWeakMemoizeCacheList();
     }
   }
 
   return store as Record<Name, MemoizeCache[]>;
+}
+
+function createWeakMemoizeCacheList(): MemoizeCache[] {
+  const cacheRefs: WeakRef<MemoizeCache>[] = [];
+
+  return new Proxy([], {
+    get(target, property, receiver) {
+      if (property === 'length') {
+        pruneCollectedCaches(cacheRefs);
+        return cacheRefs.length;
+      }
+
+      if (property === 'push') {
+        return (...caches: MemoizeCache[]) => {
+          pruneCollectedCaches(cacheRefs);
+          for (const cache of caches) {
+            cacheRefs.push(new WeakRef(cache));
+          }
+          return cacheRefs.length;
+        };
+      }
+
+      if (property === Symbol.iterator) {
+        return function* () {
+          for (const cache of getAliveCaches(cacheRefs)) {
+            yield cache;
+          }
+        };
+      }
+
+      return Reflect.get(target, property, receiver);
+    },
+  });
 }
 
 function getOrCreateGlobalStore(globalKey: string | symbol): Record<string, MemoizeCache[]> {
@@ -65,4 +98,27 @@ function isMemoizeCacheStore(store: unknown): store is Record<string, MemoizeCac
   }
 
   return Object.values(store).every(Array.isArray);
+}
+
+function getAliveCaches(cacheRefs: WeakRef<MemoizeCache>[]): MemoizeCache[] {
+  const caches: MemoizeCache[] = [];
+
+  for (let i = cacheRefs.length - 1; i >= 0; i--) {
+    const cache = cacheRefs[i]?.deref();
+    if (cache) {
+      caches.push(cache);
+    } else {
+      cacheRefs.splice(i, 1);
+    }
+  }
+
+  return caches.toReversed();
+}
+
+function pruneCollectedCaches(cacheRefs: WeakRef<MemoizeCache>[]): void {
+  for (let i = cacheRefs.length - 1; i >= 0; i--) {
+    if (!cacheRefs[i]?.deref()) {
+      cacheRefs.splice(i, 1);
+    }
+  }
 }
