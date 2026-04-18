@@ -39,7 +39,7 @@ export function getGlobalMemoizeCacheStore<const Name extends string>(
   for (const name of names) {
     const cacheGroup = store[name];
     if (!isMemoizeCacheRegistry(cacheGroup)) {
-      store[name] = createWeakMemoizeCacheList();
+      defineMemoizeCacheRegistry(store, name, createWeakMemoizeCacheList());
     }
   }
 
@@ -55,7 +55,6 @@ function createWeakMemoizeCacheList(): MemoizeCacheRegistry {
       return cacheRefs.length;
     },
     push: (...caches: MemoizeCache[]) => {
-      pruneCollectedCaches(cacheRefs);
       for (const cache of caches) {
         cacheRefs.push(new WeakRef(cache));
       }
@@ -80,13 +79,26 @@ function getOrCreateGlobalStore(globalKey: string | symbol): Record<string, Memo
     throw new Error(`Global memoize cache store key is already occupied: ${String(globalKey)}`);
   }
 
-  const newStore: Record<string, MemoizeCacheRegistry> = {};
+  const newStore = Object.create(null) as Record<string, MemoizeCacheRegistry>;
   Object.defineProperty(newStore, MEMOIZE_CACHE_STORE_MARK, {
     value: true,
   });
   globalWithCacheStore[globalKey] = newStore;
 
   return newStore;
+}
+
+function defineMemoizeCacheRegistry(
+  store: Record<string, MemoizeCacheRegistry>,
+  name: string,
+  registry: MemoizeCacheRegistry
+): void {
+  Object.defineProperty(store, name, {
+    configurable: true,
+    enumerable: true,
+    value: registry,
+    writable: true,
+  });
 }
 
 function isMemoizeCacheStore(store: unknown): store is Record<string, MemoizeCacheRegistry> {
