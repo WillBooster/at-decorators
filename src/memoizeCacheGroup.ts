@@ -1,6 +1,7 @@
 import { memoizeFactory, type MemoizeCache, type MemoizeCacheRegistry } from './memoize.js';
 
 const MEMOIZE_CACHE_STORE_MARK = Symbol.for('at-decorators.memoizeCacheStore');
+const MIN_CACHE_REF_PRUNE_SIZE = 1024;
 
 export interface MemoizeCacheGroup {
   readonly caches: MemoizeCacheRegistry;
@@ -8,9 +9,7 @@ export interface MemoizeCacheGroup {
   readonly memoize: ReturnType<typeof memoizeFactory>;
 }
 
-export type MemoizeCacheGroupOptions = Omit<NonNullable<Parameters<typeof memoizeFactory>[0]>, 'caches'> & {
-  caches?: MemoizeCacheRegistry;
-};
+export type MemoizeCacheGroupOptions = NonNullable<Parameters<typeof memoizeFactory>[0]>;
 
 export function createMemoizeCacheGroup(options: MemoizeCacheGroupOptions = {}): MemoizeCacheGroup {
   const { caches = createWeakMemoizeCacheList(), ...memoizeOptions } = options;
@@ -48,15 +47,21 @@ export function getGlobalMemoizeCacheStore<const Name extends string>(
 
 function createWeakMemoizeCacheList(): MemoizeCacheRegistry {
   const cacheRefs: WeakRef<MemoizeCache>[] = [];
+  let nextPruneSize = MIN_CACHE_REF_PRUNE_SIZE;
 
   return {
     get length() {
       pruneCollectedCaches(cacheRefs);
+      nextPruneSize = getNextPruneSize(cacheRefs.length);
       return cacheRefs.length;
     },
     push: (...caches: MemoizeCache[]) => {
       for (const cache of caches) {
         cacheRefs.push(new WeakRef(cache));
+      }
+      if (cacheRefs.length >= nextPruneSize) {
+        pruneCollectedCaches(cacheRefs);
+        nextPruneSize = getNextPruneSize(cacheRefs.length);
       }
       return cacheRefs.length;
     },
@@ -143,4 +148,8 @@ function pruneCollectedCaches(cacheRefs: WeakRef<MemoizeCache>[]): void {
       cacheRefs.splice(i, 1);
     }
   }
+}
+
+function getNextPruneSize(cacheRefCount: number): number {
+  return Math.max(cacheRefCount * 2, MIN_CACHE_REF_PRUNE_SIZE);
 }
