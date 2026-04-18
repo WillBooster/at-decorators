@@ -1,5 +1,12 @@
 import { getCacheKeyOfHash } from './getCacheKey.js';
 
+export type MemoizeCache = Map<string, [unknown, number]>;
+
+export interface MemoizeCacheRegistry extends Iterable<MemoizeCache> {
+  readonly length: number;
+  push(...caches: MemoizeCache[]): number;
+}
+
 /**
  * A memoization decorator/function that caches the results of method/getter/function calls to improve performance.
  * This decorator/function can be applied to methods and getters in a class as a decorator, and functions without context as a function.
@@ -27,7 +34,7 @@ export const memoize = memoizeFactory();
  * @param {number} [options.maxCacheSizePerTarget=10000] - The maximum number of distinct values that can be cached.
  * @param {number} [options.cacheDuration=Number.POSITIVE_INFINITY] - The maximum number of milliseconds that a cached value is valid.
  * @param {Function} [options.getCacheKey] - A function to calculate the cache key for a given context and arguments. Defaults to hashing the stringified context and arguments.
- * @param {Map<string, [unknown, number]>[]} [options.caches] - An array of maps to store cached values. Useful for tracking and clearing caches externally.
+ * @param {MemoizeCacheRegistry} [options.caches] - A registry to store cached values. Useful for tracking and clearing caches externally.
  * @returns {Function} A new memoize function with the specified cache settings.
  */
 export function memoizeFactory({
@@ -37,7 +44,7 @@ export function memoizeFactory({
   maxCacheSizePerTarget = 10_000,
 }: {
   cacheDuration?: number;
-  caches?: Map<string, [unknown, number]>[];
+  caches?: MemoizeCacheRegistry;
   getCacheKey?: (self: unknown, args: unknown[]) => string;
   maxCacheSizePerTarget?: number;
 } = {}) {
