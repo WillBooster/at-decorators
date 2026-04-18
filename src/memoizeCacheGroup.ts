@@ -60,5 +60,9 @@ function getOrCreateGlobalStore(globalKey: string | symbol): Record<string, Memo
 }
 
 function isMemoizeCacheStore(store: unknown): store is Record<string, MemoizeCache[]> {
-  return typeof store === 'object' && store !== null && !Array.isArray(store);
+  if (typeof store !== 'object' || store === null || Array.isArray(store)) {
+    return false;
+  }
+
+  return Object.values(store).every(Array.isArray);
 }
