@@ -1,4 +1,5 @@
 import { getCacheKeyOfHash } from './getCacheKey.js';
+import type { MemoizeCacheRegistry } from './memoize.js';
 
 /**
  * Factory function to create a memoize function with custom cache sizes.
@@ -10,7 +11,7 @@ import { getCacheKeyOfHash } from './getCacheKey.js';
  * @param {number} [options.maxCacheSizePerTarget=10000] - The maximum number of distinct values that can be cached.
  * @param {number} [options.cacheDuration=Number.POSITIVE_INFINITY] - The maximum number of milliseconds that a cached value is valid.
  * @param {Function} [options.getCacheKey] - A function to calculate the cache key for a given context and arguments. Defaults to hashing the stringified context and arguments.
- * @param {Map<string, [unknown, number]>[]} [options.caches] - An array of maps to store cached values.
+ * @param {MemoizeCacheRegistry} [options.caches] - A registry to store cached values.
  * @param {Function} options.persistCache - A function to store cached values with current time persistently.
  * @param {Function} options.tryReadingCache - A function to try reading cached values from persistent storage.
  * @param {Function} options.removeCache - A function to remove cached values.
@@ -26,7 +27,7 @@ export function memoizeWithPersistentCacheFactory({
   tryReadingCache,
 }: {
   cacheDuration?: number;
-  caches?: Map<string, [unknown, number]>[];
+  caches?: MemoizeCacheRegistry;
   getCacheKey?: (self: unknown, args: unknown[]) => string;
   maxCacheSizePerTarget?: number;
   persistCache: (persistentKey: string, hash: string, value: unknown, currentTime: number) => unknown;

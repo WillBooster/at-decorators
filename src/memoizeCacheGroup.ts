@@ -13,7 +13,7 @@ export type MemoizeCacheGroupOptions = Omit<NonNullable<Parameters<typeof memoiz
 };
 
 export function createMemoizeCacheGroup(options: MemoizeCacheGroupOptions = {}): MemoizeCacheGroup {
-  const { caches = [], ...memoizeOptions } = options;
+  const { caches = createWeakMemoizeCacheList(), ...memoizeOptions } = options;
 
   return {
     caches,
