@@ -66,7 +66,7 @@ function createWeakMemoizeCacheList(): MemoizeCacheRegistry {
       return cacheRefs.length;
     },
     *[Symbol.iterator]() {
-      for (const cache of getAliveCaches(cacheRefs)) {
+      for (const cache of pruneAndGetAliveCaches(cacheRefs)) {
         yield cache;
       }
     },
@@ -127,27 +127,33 @@ function isMemoizeCacheRegistry(value: unknown): value is MemoizeCacheRegistry {
   );
 }
 
-function getAliveCaches(cacheRefs: WeakRef<MemoizeCache>[]): MemoizeCache[] {
+function pruneAndGetAliveCaches(cacheRefs: WeakRef<MemoizeCache>[]): MemoizeCache[] {
   const caches: MemoizeCache[] = [];
+  let nextCacheRefIndex = 0;
 
-  for (let i = cacheRefs.length - 1; i >= 0; i--) {
-    const cache = cacheRefs[i]?.deref();
+  for (const cacheRef of cacheRefs) {
+    const cache = cacheRef.deref();
     if (cache) {
       caches.push(cache);
-    } else {
-      cacheRefs.splice(i, 1);
+      cacheRefs[nextCacheRefIndex] = cacheRef;
+      nextCacheRefIndex++;
     }
   }
+  cacheRefs.length = nextCacheRefIndex;
 
-  return caches.toReversed();
+  return caches;
 }
 
 function pruneCollectedCaches(cacheRefs: WeakRef<MemoizeCache>[]): void {
-  for (let i = cacheRefs.length - 1; i >= 0; i--) {
-    if (!cacheRefs[i]?.deref()) {
-      cacheRefs.splice(i, 1);
+  let nextCacheRefIndex = 0;
+
+  for (const cacheRef of cacheRefs) {
+    if (cacheRef.deref()) {
+      cacheRefs[nextCacheRefIndex] = cacheRef;
+      nextCacheRefIndex++;
     }
   }
+  cacheRefs.length = nextCacheRefIndex;
 }
 
 function getNextPruneSize(cacheRefCount: number): number {

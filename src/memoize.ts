@@ -1,6 +1,19 @@
 import { getCacheKeyOfHash } from './getCacheKey.js';
 
 export type MemoizeCache = Map<string, [unknown, number]>;
+export type GetCacheKey<This = unknown, Args extends unknown[] = unknown[]> = (self: This, args: Args) => string;
+
+export interface Memoize {
+  <This, Args extends unknown[], Return>(
+    target: (this: This, ...args: Args) => Return,
+    context: ClassMethodDecoratorContext<This, (this: This, ...args: Args) => Return>
+  ): (this: This, ...args: Args) => Return;
+  <This, Return>(
+    target: (this: This) => Return,
+    context: ClassGetterDecoratorContext<This, Return>
+  ): (this: This) => Return;
+  <Args extends unknown[], Return>(target: (...args: Args) => Return): (...args: Args) => Return;
+}
 
 export interface MemoizeCacheRegistry extends Iterable<MemoizeCache> {
   readonly length: number;
@@ -45,11 +58,11 @@ export function memoizeFactory({
 }: {
   cacheDuration?: number;
   caches?: MemoizeCacheRegistry;
-  getCacheKey?: (self: unknown, args: unknown[]) => string;
+  getCacheKey?: GetCacheKey;
   maxCacheSizePerTarget?: number;
-} = {}) {
+} = {}): Memoize {
   return function memoize<This, Args extends unknown[], Return>(
-    target: ((this: This, ...args: Args) => Return) | ((...args: Args) => Return) | keyof This,
+    target: ((this: This, ...args: Args) => Return) | ((...args: Args) => Return),
     context?:
       | ClassMethodDecoratorContext<This, (this: This, ...args: Args) => Return>
       | ClassGetterDecoratorContext<This, Return>
@@ -61,9 +74,10 @@ export function memoizeFactory({
       ? function (this: This) {
           const hash = getCacheKey(this, []);
           const now = Date.now();
+          const cacheEntry = cache.get(hash);
 
-          if (cache.has(hash)) {
-            const [cachedValue, cachedAt] = cache.get(hash) as [Return, number];
+          if (cacheEntry) {
+            const [cachedValue, cachedAt] = cacheEntry;
             if (now - cachedAt <= cacheDuration) {
               return cachedValue;
             }
@@ -82,9 +96,10 @@ export function memoizeFactory({
       : function (this: This, ...args: Args) {
           const hash = getCacheKey(this, args);
           const now = Date.now();
+          const cacheEntry = cache.get(hash);
 
-          if (cache.has(hash)) {
-            const [cachedValue, cachedAt] = cache.get(hash) as [Return, number];
+          if (cacheEntry) {
+            const [cachedValue, cachedAt] = cacheEntry;
             if (now - cachedAt <= cacheDuration) {
               return cachedValue;
             }
@@ -103,5 +118,5 @@ export function memoizeFactory({
 
           return result;
         };
-  };
+  } as Memoize;
 }

@@ -1,4 +1,5 @@
 import { getCacheKeyOfEmptyString, getCacheKeyOfHash } from './getCacheKey.js';
+import type { GetCacheKey, Memoize } from './memoize.js';
 
 /**
  * A memoization decorator/function that caches the results of the latest method/getter/function call to improve performance.
@@ -49,9 +50,9 @@ export const memoizeOneWithEmptyHash = memoizeOneFactory({ getCacheKey: getCache
 export function memoizeOneFactory({
   cacheDuration = Number.POSITIVE_INFINITY,
   getCacheKey = getCacheKeyOfHash,
-}: { cacheDuration?: number; getCacheKey?: (self: unknown, args: unknown[]) => string } = {}) {
+}: { cacheDuration?: number; getCacheKey?: GetCacheKey } = {}): Memoize {
   return function <This, Args extends unknown[], Return>(
-    target: ((this: This, ...args: Args) => Return) | ((...args: Args) => Return) | keyof This,
+    target: ((this: This, ...args: Args) => Return) | ((...args: Args) => Return),
     context?:
       | ClassMethodDecoratorContext<This, (this: This, ...args: Args) => Return>
       | ClassGetterDecoratorContext<This, Return>
@@ -83,5 +84,5 @@ export function memoizeOneFactory({
           }
           return lastCache;
         };
-  };
+  } as Memoize;
 }
