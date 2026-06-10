@@ -1,5 +1,29 @@
 import { getCacheKeyOfHash } from './getCacheKey.js';
-import type { MemoizeCacheRegistry } from './memoize.js';
+import type { GetCacheKey, MemoizeCacheRegistry } from './memoize.js';
+
+type MaybePromise<T> = T | PromiseLike<T>;
+
+export interface MemoizeWithPersistentCacheOptions {
+  cacheDuration?: number;
+  caches?: MemoizeCacheRegistry;
+  getCacheKey?: GetCacheKey;
+  maxCacheSizePerTarget?: number;
+  persistCache: (persistentKey: string, hash: string, value: unknown, currentTime: number) => MaybePromise<unknown>;
+  removeCache: (persistentKey: string, hash: string) => MaybePromise<unknown>;
+  tryReadingCache: (persistentKey: string, hash: string) => [unknown, number] | undefined;
+}
+
+export interface MemoizeWithPersistentCache {
+  <This, Args extends unknown[], Return>(
+    target: (this: This, ...args: Args) => Return,
+    context: ClassMethodDecoratorContext<This, (this: This, ...args: Args) => Return>
+  ): (this: This, ...args: Args) => Return;
+  <This, Return>(
+    target: (this: This) => Return,
+    context: ClassGetterDecoratorContext<This, Return>
+  ): (this: This) => Return;
+  <Args extends unknown[], Return>(target: (...args: Args) => Return): (...args: Args) => Return;
+}
 
 /**
  * Factory function to create a memoize function with custom cache sizes.
@@ -25,45 +49,32 @@ export function memoizeWithPersistentCacheFactory({
   persistCache,
   removeCache,
   tryReadingCache,
-}: {
-  cacheDuration?: number;
-  caches?: MemoizeCacheRegistry;
-  getCacheKey?: (self: unknown, args: unknown[]) => string;
-  maxCacheSizePerTarget?: number;
-  persistCache: (persistentKey: string, hash: string, value: unknown, currentTime: number) => unknown;
-  removeCache: (persistentKey: string, hash: string) => unknown;
-  tryReadingCache: (persistentKey: string, hash: string) => [unknown, number] | undefined;
-}) {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return function <This, Args extends any[], Return>(persistentKey: string) {
+}: MemoizeWithPersistentCacheOptions): (persistentKey: string) => MemoizeWithPersistentCache {
+  return function (persistentKey: string) {
     return function memoize(
-      target: ((this: This, ...args: Args) => Return) | ((...args: Args) => Return) | keyof This,
+      target: ((this: unknown, ...args: unknown[]) => unknown) | ((...args: unknown[]) => unknown),
       context?:
-        | ClassMethodDecoratorContext<This, (this: This, ...args: Args) => Return>
-        | ClassGetterDecoratorContext<This, Return>
+        | ClassMethodDecoratorContext<unknown, (this: unknown, ...args: unknown[]) => unknown>
+        | ClassGetterDecoratorContext<unknown, unknown>
     ) {
-      const cache = new Map<string, [Return, number]>();
+      const cache = new Map<string, [unknown, number]>();
       caches?.push(cache);
 
       return context?.kind === 'getter'
-        ? function (this: This) {
+        ? function (this: unknown) {
             const hash = getCacheKey(this, []);
             const now = Date.now();
+            const cacheEntry = cache.get(hash);
 
             // Check in-memory cache first
-            if (cache.has(hash)) {
-              const [cachedValue, cachedAt] = cache.get(hash) as [Return, number];
+            if (cacheEntry) {
+              const [cachedValue, cachedAt] = cacheEntry;
               if (now - cachedAt <= cacheDuration) {
                 return cachedValue;
               }
 
               cache.delete(hash);
-              try {
-                const promise = removeCache(persistentKey, hash);
-                if (promise instanceof Promise) promise.catch(noop);
-              } catch {
-                // do nothing.
-              }
+              ignoreCacheOperationError(() => removeCache(persistentKey, hash));
             }
 
             // Try reading from persistent cache
@@ -72,67 +83,47 @@ export function memoizeWithPersistentCacheFactory({
               if (persistentCache) {
                 const [cachedValue, cachedAt] = persistentCache;
                 if (now - cachedAt <= cacheDuration) {
-                  cache.set(hash, [cachedValue as Return, cachedAt]);
-                  return cachedValue as Return;
+                  cache.set(hash, [cachedValue, cachedAt]);
+                  return cachedValue;
                 }
 
-                const promise = removeCache(persistentKey, hash);
-                if (promise instanceof Promise) promise.catch(noop);
+                ignoreCacheOperationError(() => removeCache(persistentKey, hash));
               }
             } catch {
               // do nothing.
             }
 
-            const result = (target as (this: This) => Return).call(this);
+            const result = (target as (this: unknown) => unknown).call(this);
             if (cache.size >= maxCacheSizePerTarget) {
               const oldestKey = cache.keys().next().value as string;
               cache.delete(oldestKey);
-              try {
-                const promise = removeCache(persistentKey, oldestKey);
-                if (promise instanceof Promise) promise.catch(noop);
-              } catch {
-                // do nothing.
-              }
+              ignoreCacheOperationError(() => removeCache(persistentKey, oldestKey));
             }
             cache.set(hash, [result, now]);
-            if (result instanceof Promise) {
+            if (isPromiseLike(result)) {
               void (async () => {
-                try {
-                  const promise = persistCache(persistentKey, hash, await result, now);
-                  if (promise instanceof Promise) promise.catch(noop);
-                } catch {
-                  // do nothing.
-                }
+                ignoreCacheOperationError(async () => persistCache(persistentKey, hash, await result, now));
               })();
             } else {
-              try {
-                const promise = persistCache(persistentKey, hash, result, now);
-                if (promise instanceof Promise) promise.catch(noop);
-              } catch {
-                // do nothing.
-              }
+              ignoreCacheOperationError(() => persistCache(persistentKey, hash, result, now));
             }
 
             return result;
           }
-        : function (this: This, ...args: { [K in keyof Args]: Args[K] }) {
+        : function (this: unknown, ...args: unknown[]) {
             const hash = getCacheKey(this, args);
             const now = Date.now();
+            const cacheEntry = cache.get(hash);
 
             // Check in-memory cache first
-            if (cache.has(hash)) {
-              const [cachedValue, cachedAt] = cache.get(hash) as [Return, number];
+            if (cacheEntry) {
+              const [cachedValue, cachedAt] = cacheEntry;
               if (now - cachedAt <= cacheDuration) {
                 return cachedValue;
               }
 
               cache.delete(hash);
-              try {
-                const promise = removeCache(persistentKey, hash);
-                if (promise instanceof Promise) promise.catch(noop);
-              } catch {
-                // do nothing.
-              }
+              ignoreCacheOperationError(() => removeCache(persistentKey, hash));
             }
 
             // Try reading from persistent cache
@@ -141,55 +132,56 @@ export function memoizeWithPersistentCacheFactory({
               if (persistentCache) {
                 const [cachedValue, cachedAt] = persistentCache;
                 if (now - cachedAt <= cacheDuration) {
-                  cache.set(hash, [cachedValue as Return, cachedAt]);
-                  return cachedValue as Return;
+                  cache.set(hash, [cachedValue, cachedAt]);
+                  return cachedValue;
                 }
 
-                const promise = removeCache(persistentKey, hash);
-                if (promise instanceof Promise) promise.catch(noop);
+                ignoreCacheOperationError(() => removeCache(persistentKey, hash));
               }
             } catch {
               // do nothing.
             }
 
             const result = context
-              ? (target as (this: This, ...args: Args) => Return).call(this, ...args)
-              : (target as (...args: Args) => Return)(...args);
+              ? (target as (this: unknown, ...args: unknown[]) => unknown).call(this, ...args)
+              : (target as (...args: unknown[]) => unknown)(...args);
 
             if (cache.size >= maxCacheSizePerTarget) {
               const oldestKey = cache.keys().next().value as string;
               cache.delete(oldestKey);
-              try {
-                const promise = removeCache(persistentKey, oldestKey);
-                if (promise instanceof Promise) promise.catch(noop);
-              } catch {
-                // do nothing.
-              }
+              ignoreCacheOperationError(() => removeCache(persistentKey, oldestKey));
             }
             cache.set(hash, [result, now]);
-            if (result instanceof Promise) {
+            if (isPromiseLike(result)) {
               void (async () => {
-                try {
-                  const promise = persistCache(persistentKey, hash, await result, now);
-                  if (promise instanceof Promise) promise.catch(noop);
-                } catch {
-                  // do nothing.
-                }
+                ignoreCacheOperationError(async () => persistCache(persistentKey, hash, await result, now));
               })();
             } else {
-              try {
-                const promise = persistCache(persistentKey, hash, result, now);
-                if (promise instanceof Promise) promise.catch(noop);
-              } catch {
-                // do nothing.
-              }
+              ignoreCacheOperationError(() => persistCache(persistentKey, hash, result, now));
             }
 
             return result;
           };
-    };
+    } as MemoizeWithPersistentCache;
   };
 }
 
-// eslint-disable-next-line @typescript-eslint/no-empty-function
-const noop = (): void => {};
+function ignoreCacheOperationError(operation: () => MaybePromise<unknown>): void {
+  try {
+    const result = operation();
+    if (isPromiseLike(result)) {
+      void result.then(undefined, noop);
+    }
+  } catch {
+    // do nothing.
+  }
+}
+
+function isPromiseLike(value: unknown): value is PromiseLike<unknown> {
+  return (
+    (typeof value === 'object' && value !== null && 'then' in value && typeof value.then === 'function') ||
+    (typeof value === 'function' && 'then' in value && typeof value.then === 'function')
+  );
+}
+
+function noop(): void {}
