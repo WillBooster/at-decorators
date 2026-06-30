@@ -41,8 +41,8 @@
     "verify-full": "wb verify --full"
   },
   "devDependencies": {
-    "@babel/core": "7.29.7",
-    "@babel/plugin-proposal-decorators": "7.29.7",
+    "@babel/core": "8.0.1",
+    "@babel/plugin-proposal-decorators": "8.0.2",
     "@rolldown/plugin-babel": "0.2.3",
     "@tsconfig/node-lts": "24.0.0",
     "@tsconfig/node-ts": "23.6.4",
