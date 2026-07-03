@@ -175,7 +175,7 @@ const memoizeIgnoringArgs = memoizeFactory({ getCacheKey: getCacheKeyOfEmptyStri
 const memoizeByUserId = memoizeFactory({ getCacheKey: (_self, args) => (args[0] as { id: string }).id });
 ```
 
-Serialization is powered by an embedded fork of [oson](https://github.com/KnorpelSenf/oson), which — unlike `JSON.stringify` — handles `undefined`, `bigint`, `NaN`, `Infinity`, `Map`, `Set`, `Date`, `RegExp`, `URL`, `Error`, `Uint8Array`, sparse arrays, and circular references. The serializer (`stringify`) and hash (`sha3_512`) are exported for direct use.
+Serialization is powered by an embedded fork of [oson](https://github.com/KnorpelSenf/oson), which — unlike `JSON.stringify` — handles `undefined`, `bigint`, `NaN`, `Infinity`, `Map`, `Set`, `Date`, `RegExp`, `URL`, `Error`, `Uint8Array`, and circular references. The serializer (`stringify`) and hash (`sha3_512`) are exported for direct use.
 
 ## API Summary
 

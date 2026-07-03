@@ -56,6 +56,9 @@ const sharedBlocks = new Int32Array(BLOCK_COUNT);
 const textEncoder = new TextEncoder();
 let byteBuffer = new Uint8Array(4096);
 let wordBuffer = new Uint32Array(byteBuffer.buffer);
+// Buffers grown beyond this cap are used only for the current call and left to the GC, so one
+// huge input doesn't pin a large ArrayBuffer for the process lifetime.
+const MAX_RETAINED_BUFFER_LENGTH = 1 << 20;
 
 // Absorbing the UTF-8 bytes as whole 32-bit words via `wordBuffer` assumes little-endian layout,
 // which holds on all mainstream platforms; fall back to byte-wise composition otherwise.
@@ -68,15 +71,21 @@ const IS_LITTLE_ENDIAN = new Uint8Array(new Uint32Array([1]).buffer)[0] === 1;
 export function sha3_512(message: string): string {
   // A UTF-16 code unit encodes to at most 3 UTF-8 bytes.
   const maxByteLength = message.length * 3;
-  if (byteBuffer.length < maxByteLength) {
-    let newLength = byteBuffer.length * 2;
+  let bytes = byteBuffer;
+  let words = wordBuffer;
+  if (bytes.length < maxByteLength) {
+    let newLength = bytes.length * 2;
     while (newLength < maxByteLength) {
       newLength *= 2;
     }
-    byteBuffer = new Uint8Array(newLength);
-    wordBuffer = new Uint32Array(byteBuffer.buffer);
+    bytes = new Uint8Array(newLength);
+    words = new Uint32Array(bytes.buffer);
+    if (newLength <= MAX_RETAINED_BUFFER_LENGTH) {
+      byteBuffer = bytes;
+      wordBuffer = words;
+    }
   }
-  const byteLength = textEncoder.encodeInto(message, byteBuffer).written;
+  const byteLength = textEncoder.encodeInto(message, bytes).written;
 
   const s = sharedState;
   s.fill(0);
@@ -87,7 +96,7 @@ export function sha3_512(message: string): string {
     let wordIndex = 0;
     while (byteLength - byteIndex >= BYTE_COUNT) {
       for (let w = 0; w < BLOCK_COUNT; w++) {
-        s[w] = (s[w] as number) ^ (wordBuffer[wordIndex + w] as number);
+        s[w] = (s[w] as number) ^ (words[wordIndex + w] as number);
       }
       f(s);
       wordIndex += BLOCK_COUNT;
@@ -99,10 +108,10 @@ export function sha3_512(message: string): string {
         const b = byteIndex + (w << 2);
         s[w] =
           (s[w] as number) ^
-          ((byteBuffer[b] as number) |
-            ((byteBuffer[b + 1] as number) << 8) |
-            ((byteBuffer[b + 2] as number) << 16) |
-            ((byteBuffer[b + 3] as number) << 24));
+          ((bytes[b] as number) |
+            ((bytes[b + 1] as number) << 8) |
+            ((bytes[b + 2] as number) << 16) |
+            ((bytes[b + 3] as number) << 24));
       }
       f(s);
       byteIndex += BYTE_COUNT;
@@ -114,7 +123,7 @@ export function sha3_512(message: string): string {
   blocks.fill(0);
   for (let b = byteIndex; b < byteLength; b++) {
     const i = b - byteIndex;
-    blocks[i >> 2] = (blocks[i >> 2] as number) | ((byteBuffer[b] as number) << ((i & 3) << 3));
+    blocks[i >> 2] = (blocks[i >> 2] as number) | ((bytes[b] as number) << ((i & 3) << 3));
   }
   const remainder = byteLength - byteIndex;
   blocks[remainder >> 2] = (blocks[remainder >> 2] as number) | (0x06 << ((remainder & 3) << 3));

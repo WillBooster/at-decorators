@@ -68,8 +68,8 @@ import { type ConstructorMap, GLOBAL_CONSTRUCTOR_MAP, PLAIN_OBJECT_LABEL } from 
 
 /**
  * Converts a value to string. This will preserve circular and repeated
- * references as well as undefined, sparse arrays, bigint, and all classes
- * instances defined by the constructor map.
+ * references as well as undefined, bigint, and all classes instances defined
+ * by the constructor map. Array holes are encoded as undefined.
  *
  * @param value The value to convert to string
  * @param constructors The constructor map to use for class instances
@@ -89,8 +89,9 @@ function toMagicNumber(value: unknown): OsonMagic | null {
 /**
  * Converts a value to Oson data. Oson data only contains numbers, strings,
  * arrays, and null values, and can therefore be JSON-encoded. This will
- * preserve circular and repeated references as well as undefined, sparse
- * arrays, bigint, and all classes instances defined by the constructor map.
+ * preserve circular and repeated references as well as undefined, bigint,
+ * and all classes instances defined by the constructor map. Array holes are
+ * encoded as undefined.
  *
  * @param value The value to convert to Oson data
  * @param constructors The constructor map to use for class instances
@@ -145,6 +146,11 @@ export function listify<C = any>(value: unknown, constructors: ConstructorMap<C>
           const inst = typeof constr === 'function' ? constructors.get(constr.name) : undefined;
           if (inst === undefined) {
             // no instance found, fall back to normal object
+            // `Object.keys` + delayed property reads differ from `Object.entries` only when a
+            // getter/proxy mutates the object during serialization (a key deleted mid-loop
+            // serializes as `undefined` instead of disappearing). Such objects have no stable
+            // serialization either way, and avoiding the per-object intermediate entry arrays is
+            // what makes this path fast for cache-key derivation.
             const keys = Object.keys(value);
             const cnt = keys.length;
             // eslint-disable-next-line unicorn/no-new-array -- `new Array(n)` is much faster than `Array.from({ length: n })`, and all slots are filled below.
