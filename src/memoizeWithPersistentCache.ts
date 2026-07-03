@@ -142,9 +142,8 @@ export function memoizeWithPersistentCacheFactory({
               // do nothing.
             }
 
-            const result = context
-              ? (target as (this: unknown, ...args: unknown[]) => unknown).call(this, ...args)
-              : (target as (...args: unknown[]) => unknown)(...args);
+            // `Reflect.apply` avoids reading `target.apply`, which the wrapped function may shadow.
+            const result = Reflect.apply(target, context ? this : undefined, args) as unknown;
 
             if (cache.size >= maxCacheSizePerTarget) {
               const oldestKey = cache.keys().next().value as string;

@@ -77,9 +77,8 @@ export function memoizeOneFactory({
           const now = Date.now();
           if (lastHash !== hash || now - lastCachedAt > cacheDuration) {
             lastHash = hash;
-            lastCache = context
-              ? (target as (this: This, ...args: Args) => Return).call(this, ...args)
-              : (target as (...args: Args) => Return)(...args);
+            // `Reflect.apply` avoids reading `target.apply`, which the wrapped function may shadow.
+            lastCache = Reflect.apply(target, context ? this : undefined, args) as Return;
             lastCachedAt = now;
           }
           return lastCache;
