@@ -137,9 +137,12 @@ import { memoizeWithPersistentCacheFactory } from 'at-decorators';
 
 const createPersistentMemoize = memoizeWithPersistentCacheFactory({
   cacheDuration: 60 * 60 * 1000,
+  // `persistCache` and `removeCache` may be async; their results are ignored.
   persistCache: (persistentKey, hash, value, currentTime) => db.upsert(persistentKey, hash, value, currentTime),
-  tryReadingCache: (persistentKey, hash) => db.read(persistentKey, hash), // Returns [value, cachedAt] or undefined.
   removeCache: (persistentKey, hash) => db.remove(persistentKey, hash),
+  // `tryReadingCache` MUST be synchronous and return [value, cachedAt] or undefined;
+  // a Promise cannot be awaited here and would silently bypass the persistent lookup.
+  tryReadingCache: (persistentKey, hash) => syncDb.read(persistentKey, hash),
 });
 
 class GeocodingService {
@@ -150,7 +153,7 @@ class GeocodingService {
 }
 ```
 
-Each memoized target gets a `persistentKey` namespace. Lookups check the in-memory cache first, then the persistent storage; promise results are persisted after they resolve.
+Each memoized target gets a `persistentKey` namespace. Lookups check the in-memory cache first, then the persistent storage (synchronously — use a synchronous client or an in-process snapshot for reads); promise results are persisted after they resolve.
 
 ### Cache key functions
 
@@ -192,8 +195,8 @@ Serialization is powered by an embedded fork of [oson](https://github.com/Knorpe
 
 ## Requirements
 
-- **Decorators**: TypeScript 5.0+ (standard decorators, i.e. without `experimentalDecorators`), or Babel with [`@babel/plugin-proposal-decorators`](https://babeljs.io/docs/babel-plugin-proposal-decorators) (`version: '2023-05'`).
-- **Runtime**: any modern JavaScript runtime; plain-function usage requires no decorator support at all.
+- **Decorators**: TypeScript 5.0+ (standard decorators, i.e. without `experimentalDecorators`), or Babel with [`@babel/plugin-proposal-decorators`](https://babeljs.io/docs/babel-plugin-proposal-decorators) (`version: '2023-11'`).
+- **Runtime**: Node.js 24+ (per the `engines` field); plain-function usage requires no decorator support at all.
 
 ## Contributing
 
