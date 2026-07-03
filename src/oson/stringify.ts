@@ -86,38 +86,6 @@ function toMagicNumber(value: unknown): OsonMagic | null {
   }
   return null;
 }
-const SPARSE_PROTO: number[] = [];
-function sparse(len: number): number[] {
-  if (SPARSE_PROTO.length < len) {
-    const old = SPARSE_PROTO.length;
-    SPARSE_PROTO.length = len;
-    SPARSE_PROTO.fill(ARRAY_HOLE_INDEX, old, len);
-  }
-  return SPARSE_PROTO.slice(0, len);
-}
-
-function fromObject(value: object, constructors: ConstructorMap): [string, unknown[]] {
-  // check if we have this instance registered
-  const constr = value.constructor;
-  if (typeof constr === 'function') {
-    const label = constr.name;
-    const inst = constructors.get(label);
-    if (inst !== undefined) {
-      return [label, inst.from(value)];
-    }
-  }
-  // no instance found, fall back to normal object
-  const entries = Object.entries(value);
-  const cnt = entries.length;
-  const val: unknown[] = Array.from({ length: cnt + cnt });
-  for (let i = 0; i < cnt; i++) {
-    const entry = entries[i] as [string, unknown];
-    const ii = i + i;
-    val[ii] = entry[0];
-    val[ii + 1] = entry[1];
-  }
-  return [PLAIN_OBJECT_LABEL, val];
-}
 /**
  * Converts a value to Oson data. Oson data only contains numbers, strings,
  * arrays, and null values, and can therefore be JSON-encoded. This will
@@ -163,21 +131,44 @@ export function listify<C = any>(value: unknown, constructors: ConstructorMap<C>
           list[position] = value;
           index.set(value, position);
         } else if (Array.isArray(value)) {
-          const arr: OsonArray = sparse(value.length);
-          list[position] = arr;
-          index.set(value, position);
-          for (const [i, element] of value.entries()) {
-            arr[i] = add(element);
-          }
-        } else {
-          const [label, vals] = fromObject(value, constructors);
-          const len = vals.length;
-          const arr = Array.from({ length: len + 1 }) as OsonObject;
-          arr[0] = label;
+          const len = value.length;
+          // eslint-disable-next-line unicorn/no-new-array -- `new Array(n)` is much faster than `Array.from({ length: n })`, and all slots are filled below.
+          const arr: OsonArray = new Array<number>(len);
           list[position] = arr;
           index.set(value, position);
           for (let i = 0; i < len; i++) {
-            arr[i + 1] = add(vals[i]);
+            arr[i] = add(value[i]);
+          }
+        } else {
+          // check if we have this instance registered
+          const constr = value.constructor;
+          const inst = typeof constr === 'function' ? constructors.get(constr.name) : undefined;
+          if (inst === undefined) {
+            // no instance found, fall back to normal object
+            const keys = Object.keys(value);
+            const cnt = keys.length;
+            // eslint-disable-next-line unicorn/no-new-array -- `new Array(n)` is much faster than `Array.from({ length: n })`, and all slots are filled below.
+            const arr = new Array(cnt + cnt + 1) as OsonObject;
+            arr[0] = PLAIN_OBJECT_LABEL;
+            list[position] = arr;
+            index.set(value, position);
+            for (let i = 0; i < cnt; i++) {
+              const key = keys[i] as string;
+              const ii = i + i;
+              arr[ii + 1] = add(key);
+              arr[ii + 2] = add((value as Record<string, unknown>)[key]);
+            }
+          } else {
+            const vals = inst.from(value as C);
+            const len = vals.length;
+            // eslint-disable-next-line unicorn/no-new-array -- `new Array(n)` is much faster than `Array.from({ length: n })`, and all slots are filled below.
+            const arr = new Array(len + 1) as OsonObject;
+            arr[0] = constr.name;
+            list[position] = arr;
+            index.set(value, position);
+            for (let i = 0; i < len; i++) {
+              arr[i + 1] = add(vals[i]);
+            }
           }
         }
       }

@@ -143,8 +143,8 @@ export function memoizeWithPersistentCacheFactory({
             }
 
             const result = context
-              ? (target as (this: unknown, ...args: unknown[]) => unknown).call(this, ...args)
-              : (target as (...args: unknown[]) => unknown)(...args);
+              ? (target as (this: unknown, ...args: unknown[]) => unknown).apply(this, args)
+              : (target as (...args: unknown[]) => unknown).apply(undefined, args);
 
             if (cache.size >= maxCacheSizePerTarget) {
               const oldestKey = cache.keys().next().value as string;

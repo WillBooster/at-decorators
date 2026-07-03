@@ -20,196 +20,139 @@
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 /**
- * [js-sha3]{@link https://github.com/emn178/js-sha3}
+ * A SHA3-512 implementation specialized and optimized from
+ * [js-sha3]{@link https://github.com/emn178/js-sha3} (version 0.9.3).
  *
- * @version 0.9.3
  * @author Chen, Yi-Cyuan [emn178@gmail.com]
  * @copyright Chen, Yi-Cyuan 2015-2023
  * @license MIT
  */
 
-/* eslint-disable @typescript-eslint/restrict-plus-operands */
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-nocheck
+// SHA3-512 parameters: rate = 576 bits = 72 bytes = 18 32-bit words.
+const BYTE_COUNT = 72;
+const BLOCK_COUNT = 18;
+// 512-bit output = 16 32-bit words.
+const OUTPUT_BLOCKS = 16;
 
-const FINALIZE_ERROR = 'finalize already called';
-// eslint-disable-next-line @typescript-eslint/no-misused-spread
-const HEX_CHARS = [...'0123456789abcdef'];
-const PADDING = [6, 1536, 393_216, 100_663_296];
-const SHIFT = [0, 8, 16, 24];
-const RC = [
+const HEX_PAIRS: string[] = Array.from({ length: 256 }, (_, i) => i.toString(16).padStart(2, '0'));
+
+// Keccak round constants interleaved as [low, high] 32-bit words. Int32Array stores the same bit
+// patterns as the original unsigned constants, and XOR is bit-pattern based.
+// eslint-disable-next-line unicorn/prefer-spread
+const RC = new Int32Array([
   1, 0, 32_898, 0, 32_906, 2_147_483_648, 2_147_516_416, 2_147_483_648, 32_907, 0, 2_147_483_649, 0, 2_147_516_545,
   2_147_483_648, 32_777, 2_147_483_648, 138, 0, 136, 0, 2_147_516_425, 0, 2_147_483_658, 0, 2_147_516_555, 0, 139,
   2_147_483_648, 32_905, 2_147_483_648, 32_771, 2_147_483_648, 32_770, 2_147_483_648, 128, 2_147_483_648, 32_778, 0,
   2_147_483_658, 2_147_483_648, 2_147_516_545, 2_147_483_648, 32_896, 2_147_483_648, 2_147_483_649, 0, 2_147_516_424,
   2_147_483_648,
-];
+]);
 
+// Reused across calls to avoid per-call allocations. Safe because sha3_512 is fully synchronous.
+// `sharedState` holds the 1600-bit Keccak state as 50 32-bit words; `sharedBlocks` holds the final
+// (padded) rate block. `byteBuffer`/`wordBuffer` are two views of one growable buffer holding the
+// UTF-8 encoded message.
+const sharedState = new Int32Array(50);
+const sharedBlocks = new Int32Array(BLOCK_COUNT);
+const textEncoder = new TextEncoder();
+let byteBuffer = new Uint8Array(4096);
+let wordBuffer = new Uint32Array(byteBuffer.buffer);
+
+// Absorbing the UTF-8 bytes as whole 32-bit words via `wordBuffer` assumes little-endian layout,
+// which holds on all mainstream platforms; fall back to byte-wise composition otherwise.
+const IS_LITTLE_ENDIAN = new Uint8Array(new Uint32Array([1]).buffer)[0] === 1;
+
+/**
+ * Computes the SHA3-512 hash of the given string (encoded as UTF-8) and returns it as a hex string.
+ */
 // eslint-disable-next-line @typescript-eslint/naming-convention
 export function sha3_512(message: string): string {
-  return new Keccak(512, PADDING, 512).update(message).hex();
+  // A UTF-16 code unit encodes to at most 3 UTF-8 bytes.
+  const maxByteLength = message.length * 3;
+  if (byteBuffer.length < maxByteLength) {
+    let newLength = byteBuffer.length * 2;
+    while (newLength < maxByteLength) {
+      newLength *= 2;
+    }
+    byteBuffer = new Uint8Array(newLength);
+    wordBuffer = new Uint32Array(byteBuffer.buffer);
+  }
+  const byteLength = textEncoder.encodeInto(message, byteBuffer).written;
+
+  const s = sharedState;
+  s.fill(0);
+
+  // Absorb all full rate blocks directly from the encoded bytes.
+  let byteIndex = 0;
+  if (IS_LITTLE_ENDIAN) {
+    let wordIndex = 0;
+    while (byteLength - byteIndex >= BYTE_COUNT) {
+      for (let w = 0; w < BLOCK_COUNT; w++) {
+        s[w] = (s[w] as number) ^ (wordBuffer[wordIndex + w] as number);
+      }
+      f(s);
+      wordIndex += BLOCK_COUNT;
+      byteIndex += BYTE_COUNT;
+    }
+  } else {
+    while (byteLength - byteIndex >= BYTE_COUNT) {
+      for (let w = 0; w < BLOCK_COUNT; w++) {
+        const b = byteIndex + (w << 2);
+        s[w] =
+          (s[w] as number) ^
+          ((byteBuffer[b] as number) |
+            ((byteBuffer[b + 1] as number) << 8) |
+            ((byteBuffer[b + 2] as number) << 16) |
+            ((byteBuffer[b + 3] as number) << 24));
+      }
+      f(s);
+      byteIndex += BYTE_COUNT;
+    }
+  }
+
+  // Absorb the last (possibly empty) partial block with SHA3 padding.
+  const blocks = sharedBlocks;
+  blocks.fill(0);
+  for (let b = byteIndex; b < byteLength; b++) {
+    const i = b - byteIndex;
+    blocks[i >> 2] = (blocks[i >> 2] as number) | ((byteBuffer[b] as number) << ((i & 3) << 3));
+  }
+  const remainder = byteLength - byteIndex;
+  blocks[remainder >> 2] = (blocks[remainder >> 2] as number) | (0x06 << ((remainder & 3) << 3));
+  blocks[BLOCK_COUNT - 1] = (blocks[BLOCK_COUNT - 1] as number) | 0x80_00_00_00;
+  for (let w = 0; w < BLOCK_COUNT; w++) {
+    s[w] = (s[w] as number) ^ (blocks[w] as number);
+  }
+  f(s);
+
+  let hex = '';
+  for (let w = 0; w < OUTPUT_BLOCKS; w += 4) {
+    const w0 = s[w] as number;
+    const w1 = s[w + 1] as number;
+    const w2 = s[w + 2] as number;
+    const w3 = s[w + 3] as number;
+    hex +=
+      (HEX_PAIRS[w0 & 0xFF] as string) +
+      HEX_PAIRS[(w0 >> 8) & 0xFF] +
+      HEX_PAIRS[(w0 >> 16) & 0xFF] +
+      HEX_PAIRS[w0 >>> 24] +
+      HEX_PAIRS[w1 & 0xFF] +
+      HEX_PAIRS[(w1 >> 8) & 0xFF] +
+      HEX_PAIRS[(w1 >> 16) & 0xFF] +
+      HEX_PAIRS[w1 >>> 24] +
+      HEX_PAIRS[w2 & 0xFF] +
+      HEX_PAIRS[(w2 >> 8) & 0xFF] +
+      HEX_PAIRS[(w2 >> 16) & 0xFF] +
+      HEX_PAIRS[w2 >>> 24] +
+      HEX_PAIRS[w3 & 0xFF] +
+      HEX_PAIRS[(w3 >> 8) & 0xFF] +
+      HEX_PAIRS[(w3 >> 16) & 0xFF] +
+      HEX_PAIRS[w3 >>> 24];
+  }
+  return hex;
 }
 
-const cloneArray = <T>(array: T[]): T[] => {
-  const newArray: T[] = [];
-  for (const [i, element] of array.entries()) {
-    newArray[i] = element;
-  }
-  return newArray;
-};
-
-class Keccak {
-  blocks: number[] = [];
-  s: number[] = [];
-  padding: number[];
-  outputBits: number;
-  reset = true;
-  finalized = false;
-  block = 0;
-  start = 0;
-  blockCount: number;
-  byteCount: number;
-  outputBlocks: number;
-  extraBytes: number;
-  lastByteIndex = 0;
-
-  constructor(bits: number, padding: number[], outputBits: number) {
-    this.padding = padding;
-    this.outputBits = outputBits;
-    this.blockCount = (1600 - (bits << 1)) >> 5;
-    this.byteCount = this.blockCount << 2;
-    this.outputBlocks = outputBits >> 5;
-    this.extraBytes = (outputBits & 31) >> 3;
-
-    for (let i = 0; i < 50; ++i) {
-      this.s[i] = 0;
-    }
-  }
-
-  update(message: string): this {
-    if (this.finalized) {
-      throw new Error(FINALIZE_ERROR);
-    }
-    const blocks = this.blocks;
-    const byteCount = this.byteCount;
-    const length = message.length;
-    const blockCount = this.blockCount;
-    const s = this.s;
-    let index = 0;
-    let i: number;
-    let code: number;
-
-    while (index < length) {
-      if (this.reset) {
-        this.reset = false;
-        blocks[0] = this.block;
-        for (i = 1; i < blockCount + 1; ++i) {
-          blocks[i] = 0;
-        }
-      }
-      for (i = this.start; index < length && i < byteCount; ++index) {
-        code = message.codePointAt(index) || 0;
-        if (code < 0x80) {
-          blocks[i >> 2] |= code << SHIFT[i++ & 3];
-        } else if (code < 0x8_00) {
-          blocks[i >> 2] |= (0xC0 | (code >> 6)) << SHIFT[i++ & 3];
-          blocks[i >> 2] |= (0x80 | (code & 0x3F)) << SHIFT[i++ & 3];
-        } else if (code < 0xD8_00 || code >= 0xE0_00) {
-          blocks[i >> 2] |= (0xE0 | (code >> 12)) << SHIFT[i++ & 3];
-          blocks[i >> 2] |= (0x80 | ((code >> 6) & 0x3F)) << SHIFT[i++ & 3];
-          blocks[i >> 2] |= (0x80 | (code & 0x3F)) << SHIFT[i++ & 3];
-        } else {
-          code = 0x1_00_00 + (((code & 0x3_FF) << 10) | ((message.codePointAt(++index) || 0) & 0x3_FF));
-          blocks[i >> 2] |= (0xF0 | (code >> 18)) << SHIFT[i++ & 3];
-          blocks[i >> 2] |= (0x80 | ((code >> 12) & 0x3F)) << SHIFT[i++ & 3];
-          blocks[i >> 2] |= (0x80 | ((code >> 6) & 0x3F)) << SHIFT[i++ & 3];
-          blocks[i >> 2] |= (0x80 | (code & 0x3F)) << SHIFT[i++ & 3];
-        }
-      }
-      this.lastByteIndex = i;
-      if (i >= byteCount) {
-        this.start = i - byteCount;
-        this.block = blocks[blockCount];
-        for (i = 0; i < blockCount; ++i) {
-          s[i] ^= blocks[i];
-        }
-        f(s);
-        this.reset = true;
-      } else {
-        this.start = i;
-      }
-    }
-    return this;
-  }
-
-  finalize(): void {
-    if (this.finalized) {
-      return;
-    }
-    this.finalized = true;
-    const blocks = this.blocks;
-    let i = this.lastByteIndex;
-    const blockCount = this.blockCount;
-    const s = this.s;
-    blocks[i >> 2] |= this.padding[i & 3];
-    if (this.lastByteIndex === this.byteCount) {
-      blocks[0] = blocks[blockCount];
-      for (i = 1; i < blockCount + 1; ++i) {
-        blocks[i] = 0;
-      }
-    }
-    blocks[blockCount - 1] |= 0x80_00_00_00;
-    for (i = 0; i < blockCount; ++i) {
-      s[i] ^= blocks[i];
-    }
-    f(s);
-  }
-
-  hex(): string {
-    this.finalize();
-
-    const blockCount = this.blockCount;
-    let s = this.s;
-    const outputBlocks = this.outputBlocks;
-    const extraBytes = this.extraBytes;
-    let i = 0;
-    let j = 0;
-    let hex = '';
-    let block: number;
-    while (j < outputBlocks) {
-      for (i = 0; i < blockCount && j < outputBlocks; ++i, ++j) {
-        block = s[i];
-        hex +=
-          HEX_CHARS[(block >> 4) & 0x0F] +
-          HEX_CHARS[block & 0x0F] +
-          HEX_CHARS[(block >> 12) & 0x0F] +
-          HEX_CHARS[(block >> 8) & 0x0F] +
-          HEX_CHARS[(block >> 20) & 0x0F] +
-          HEX_CHARS[(block >> 16) & 0x0F] +
-          HEX_CHARS[(block >> 28) & 0x0F] +
-          HEX_CHARS[(block >> 24) & 0x0F];
-      }
-      if (j % blockCount === 0) {
-        s = cloneArray(s);
-        f(s);
-        i = 0;
-      }
-    }
-    if (extraBytes) {
-      block = s[i];
-      hex += HEX_CHARS[(block >> 4) & 0x0F] + HEX_CHARS[block & 0x0F];
-      if (extraBytes > 1) {
-        hex += HEX_CHARS[(block >> 12) & 0x0F] + HEX_CHARS[(block >> 8) & 0x0F];
-      }
-      if (extraBytes > 2) {
-        hex += HEX_CHARS[(block >> 20) & 0x0F] + HEX_CHARS[(block >> 16) & 0x0F];
-      }
-    }
-    return hex;
-  }
-}
-
-const f = function (s: number[]): void {
+// eslint-disable-next-line max-lines-per-function
+function f(s: Int32Array): void {
   let h: number;
   let l: number;
   let n: number;
@@ -273,182 +216,282 @@ const f = function (s: number[]): void {
   let b47: number;
   let b48: number;
   let b49: number;
+  let s0 = s[0] as number;
+  let s1 = s[1] as number;
+  let s2 = s[2] as number;
+  let s3 = s[3] as number;
+  let s4 = s[4] as number;
+  let s5 = s[5] as number;
+  let s6 = s[6] as number;
+  let s7 = s[7] as number;
+  let s8 = s[8] as number;
+  let s9 = s[9] as number;
+  let s10 = s[10] as number;
+  let s11 = s[11] as number;
+  let s12 = s[12] as number;
+  let s13 = s[13] as number;
+  let s14 = s[14] as number;
+  let s15 = s[15] as number;
+  let s16 = s[16] as number;
+  let s17 = s[17] as number;
+  let s18 = s[18] as number;
+  let s19 = s[19] as number;
+  let s20 = s[20] as number;
+  let s21 = s[21] as number;
+  let s22 = s[22] as number;
+  let s23 = s[23] as number;
+  let s24 = s[24] as number;
+  let s25 = s[25] as number;
+  let s26 = s[26] as number;
+  let s27 = s[27] as number;
+  let s28 = s[28] as number;
+  let s29 = s[29] as number;
+  let s30 = s[30] as number;
+  let s31 = s[31] as number;
+  let s32 = s[32] as number;
+  let s33 = s[33] as number;
+  let s34 = s[34] as number;
+  let s35 = s[35] as number;
+  let s36 = s[36] as number;
+  let s37 = s[37] as number;
+  let s38 = s[38] as number;
+  let s39 = s[39] as number;
+  let s40 = s[40] as number;
+  let s41 = s[41] as number;
+  let s42 = s[42] as number;
+  let s43 = s[43] as number;
+  let s44 = s[44] as number;
+  let s45 = s[45] as number;
+  let s46 = s[46] as number;
+  let s47 = s[47] as number;
+  let s48 = s[48] as number;
+  let s49 = s[49] as number;
   for (n = 0; n < 48; n += 2) {
-    c0 = s[0] ^ s[10] ^ s[20] ^ s[30] ^ s[40];
-    c1 = s[1] ^ s[11] ^ s[21] ^ s[31] ^ s[41];
-    c2 = s[2] ^ s[12] ^ s[22] ^ s[32] ^ s[42];
-    c3 = s[3] ^ s[13] ^ s[23] ^ s[33] ^ s[43];
-    c4 = s[4] ^ s[14] ^ s[24] ^ s[34] ^ s[44];
-    c5 = s[5] ^ s[15] ^ s[25] ^ s[35] ^ s[45];
-    c6 = s[6] ^ s[16] ^ s[26] ^ s[36] ^ s[46];
-    c7 = s[7] ^ s[17] ^ s[27] ^ s[37] ^ s[47];
-    c8 = s[8] ^ s[18] ^ s[28] ^ s[38] ^ s[48];
-    c9 = s[9] ^ s[19] ^ s[29] ^ s[39] ^ s[49];
+    c0 = s0 ^ s10 ^ s20 ^ s30 ^ s40;
+    c1 = s1 ^ s11 ^ s21 ^ s31 ^ s41;
+    c2 = s2 ^ s12 ^ s22 ^ s32 ^ s42;
+    c3 = s3 ^ s13 ^ s23 ^ s33 ^ s43;
+    c4 = s4 ^ s14 ^ s24 ^ s34 ^ s44;
+    c5 = s5 ^ s15 ^ s25 ^ s35 ^ s45;
+    c6 = s6 ^ s16 ^ s26 ^ s36 ^ s46;
+    c7 = s7 ^ s17 ^ s27 ^ s37 ^ s47;
+    c8 = s8 ^ s18 ^ s28 ^ s38 ^ s48;
+    c9 = s9 ^ s19 ^ s29 ^ s39 ^ s49;
 
     h = c8 ^ ((c2 << 1) | (c3 >>> 31));
     l = c9 ^ ((c3 << 1) | (c2 >>> 31));
-    s[0] ^= h;
-    s[1] ^= l;
-    s[10] ^= h;
-    s[11] ^= l;
-    s[20] ^= h;
-    s[21] ^= l;
-    s[30] ^= h;
-    s[31] ^= l;
-    s[40] ^= h;
-    s[41] ^= l;
+    s0 ^= h;
+    s1 ^= l;
+    s10 ^= h;
+    s11 ^= l;
+    s20 ^= h;
+    s21 ^= l;
+    s30 ^= h;
+    s31 ^= l;
+    s40 ^= h;
+    s41 ^= l;
     h = c0 ^ ((c4 << 1) | (c5 >>> 31));
     l = c1 ^ ((c5 << 1) | (c4 >>> 31));
-    s[2] ^= h;
-    s[3] ^= l;
-    s[12] ^= h;
-    s[13] ^= l;
-    s[22] ^= h;
-    s[23] ^= l;
-    s[32] ^= h;
-    s[33] ^= l;
-    s[42] ^= h;
-    s[43] ^= l;
+    s2 ^= h;
+    s3 ^= l;
+    s12 ^= h;
+    s13 ^= l;
+    s22 ^= h;
+    s23 ^= l;
+    s32 ^= h;
+    s33 ^= l;
+    s42 ^= h;
+    s43 ^= l;
     h = c2 ^ ((c6 << 1) | (c7 >>> 31));
     l = c3 ^ ((c7 << 1) | (c6 >>> 31));
-    s[4] ^= h;
-    s[5] ^= l;
-    s[14] ^= h;
-    s[15] ^= l;
-    s[24] ^= h;
-    s[25] ^= l;
-    s[34] ^= h;
-    s[35] ^= l;
-    s[44] ^= h;
-    s[45] ^= l;
+    s4 ^= h;
+    s5 ^= l;
+    s14 ^= h;
+    s15 ^= l;
+    s24 ^= h;
+    s25 ^= l;
+    s34 ^= h;
+    s35 ^= l;
+    s44 ^= h;
+    s45 ^= l;
     h = c4 ^ ((c8 << 1) | (c9 >>> 31));
     l = c5 ^ ((c9 << 1) | (c8 >>> 31));
-    s[6] ^= h;
-    s[7] ^= l;
-    s[16] ^= h;
-    s[17] ^= l;
-    s[26] ^= h;
-    s[27] ^= l;
-    s[36] ^= h;
-    s[37] ^= l;
-    s[46] ^= h;
-    s[47] ^= l;
+    s6 ^= h;
+    s7 ^= l;
+    s16 ^= h;
+    s17 ^= l;
+    s26 ^= h;
+    s27 ^= l;
+    s36 ^= h;
+    s37 ^= l;
+    s46 ^= h;
+    s47 ^= l;
     h = c6 ^ ((c0 << 1) | (c1 >>> 31));
     l = c7 ^ ((c1 << 1) | (c0 >>> 31));
-    s[8] ^= h;
-    s[9] ^= l;
-    s[18] ^= h;
-    s[19] ^= l;
-    s[28] ^= h;
-    s[29] ^= l;
-    s[38] ^= h;
-    s[39] ^= l;
-    s[48] ^= h;
-    s[49] ^= l;
+    s8 ^= h;
+    s9 ^= l;
+    s18 ^= h;
+    s19 ^= l;
+    s28 ^= h;
+    s29 ^= l;
+    s38 ^= h;
+    s39 ^= l;
+    s48 ^= h;
+    s49 ^= l;
 
-    b0 = s[0];
-    b1 = s[1];
-    b32 = (s[11] << 4) | (s[10] >>> 28);
-    b33 = (s[10] << 4) | (s[11] >>> 28);
-    b14 = (s[20] << 3) | (s[21] >>> 29);
-    b15 = (s[21] << 3) | (s[20] >>> 29);
-    b46 = (s[31] << 9) | (s[30] >>> 23);
-    b47 = (s[30] << 9) | (s[31] >>> 23);
-    b28 = (s[40] << 18) | (s[41] >>> 14);
-    b29 = (s[41] << 18) | (s[40] >>> 14);
-    b20 = (s[2] << 1) | (s[3] >>> 31);
-    b21 = (s[3] << 1) | (s[2] >>> 31);
-    b2 = (s[13] << 12) | (s[12] >>> 20);
-    b3 = (s[12] << 12) | (s[13] >>> 20);
-    b34 = (s[22] << 10) | (s[23] >>> 22);
-    b35 = (s[23] << 10) | (s[22] >>> 22);
-    b16 = (s[33] << 13) | (s[32] >>> 19);
-    b17 = (s[32] << 13) | (s[33] >>> 19);
-    b48 = (s[42] << 2) | (s[43] >>> 30);
-    b49 = (s[43] << 2) | (s[42] >>> 30);
-    b40 = (s[5] << 30) | (s[4] >>> 2);
-    b41 = (s[4] << 30) | (s[5] >>> 2);
-    b22 = (s[14] << 6) | (s[15] >>> 26);
-    b23 = (s[15] << 6) | (s[14] >>> 26);
-    b4 = (s[25] << 11) | (s[24] >>> 21);
-    b5 = (s[24] << 11) | (s[25] >>> 21);
-    b36 = (s[34] << 15) | (s[35] >>> 17);
-    b37 = (s[35] << 15) | (s[34] >>> 17);
-    b18 = (s[45] << 29) | (s[44] >>> 3);
-    b19 = (s[44] << 29) | (s[45] >>> 3);
-    b10 = (s[6] << 28) | (s[7] >>> 4);
-    b11 = (s[7] << 28) | (s[6] >>> 4);
-    b42 = (s[17] << 23) | (s[16] >>> 9);
-    b43 = (s[16] << 23) | (s[17] >>> 9);
-    b24 = (s[26] << 25) | (s[27] >>> 7);
-    b25 = (s[27] << 25) | (s[26] >>> 7);
-    b6 = (s[36] << 21) | (s[37] >>> 11);
-    b7 = (s[37] << 21) | (s[36] >>> 11);
-    b38 = (s[47] << 24) | (s[46] >>> 8);
-    b39 = (s[46] << 24) | (s[47] >>> 8);
-    b30 = (s[8] << 27) | (s[9] >>> 5);
-    b31 = (s[9] << 27) | (s[8] >>> 5);
-    b12 = (s[18] << 20) | (s[19] >>> 12);
-    b13 = (s[19] << 20) | (s[18] >>> 12);
-    b44 = (s[29] << 7) | (s[28] >>> 25);
-    b45 = (s[28] << 7) | (s[29] >>> 25);
-    b26 = (s[38] << 8) | (s[39] >>> 24);
-    b27 = (s[39] << 8) | (s[38] >>> 24);
-    b8 = (s[48] << 14) | (s[49] >>> 18);
-    b9 = (s[49] << 14) | (s[48] >>> 18);
+    b0 = s0;
+    b1 = s1;
+    b32 = (s11 << 4) | (s10 >>> 28);
+    b33 = (s10 << 4) | (s11 >>> 28);
+    b14 = (s20 << 3) | (s21 >>> 29);
+    b15 = (s21 << 3) | (s20 >>> 29);
+    b46 = (s31 << 9) | (s30 >>> 23);
+    b47 = (s30 << 9) | (s31 >>> 23);
+    b28 = (s40 << 18) | (s41 >>> 14);
+    b29 = (s41 << 18) | (s40 >>> 14);
+    b20 = (s2 << 1) | (s3 >>> 31);
+    b21 = (s3 << 1) | (s2 >>> 31);
+    b2 = (s13 << 12) | (s12 >>> 20);
+    b3 = (s12 << 12) | (s13 >>> 20);
+    b34 = (s22 << 10) | (s23 >>> 22);
+    b35 = (s23 << 10) | (s22 >>> 22);
+    b16 = (s33 << 13) | (s32 >>> 19);
+    b17 = (s32 << 13) | (s33 >>> 19);
+    b48 = (s42 << 2) | (s43 >>> 30);
+    b49 = (s43 << 2) | (s42 >>> 30);
+    b40 = (s5 << 30) | (s4 >>> 2);
+    b41 = (s4 << 30) | (s5 >>> 2);
+    b22 = (s14 << 6) | (s15 >>> 26);
+    b23 = (s15 << 6) | (s14 >>> 26);
+    b4 = (s25 << 11) | (s24 >>> 21);
+    b5 = (s24 << 11) | (s25 >>> 21);
+    b36 = (s34 << 15) | (s35 >>> 17);
+    b37 = (s35 << 15) | (s34 >>> 17);
+    b18 = (s45 << 29) | (s44 >>> 3);
+    b19 = (s44 << 29) | (s45 >>> 3);
+    b10 = (s6 << 28) | (s7 >>> 4);
+    b11 = (s7 << 28) | (s6 >>> 4);
+    b42 = (s17 << 23) | (s16 >>> 9);
+    b43 = (s16 << 23) | (s17 >>> 9);
+    b24 = (s26 << 25) | (s27 >>> 7);
+    b25 = (s27 << 25) | (s26 >>> 7);
+    b6 = (s36 << 21) | (s37 >>> 11);
+    b7 = (s37 << 21) | (s36 >>> 11);
+    b38 = (s47 << 24) | (s46 >>> 8);
+    b39 = (s46 << 24) | (s47 >>> 8);
+    b30 = (s8 << 27) | (s9 >>> 5);
+    b31 = (s9 << 27) | (s8 >>> 5);
+    b12 = (s18 << 20) | (s19 >>> 12);
+    b13 = (s19 << 20) | (s18 >>> 12);
+    b44 = (s29 << 7) | (s28 >>> 25);
+    b45 = (s28 << 7) | (s29 >>> 25);
+    b26 = (s38 << 8) | (s39 >>> 24);
+    b27 = (s39 << 8) | (s38 >>> 24);
+    b8 = (s48 << 14) | (s49 >>> 18);
+    b9 = (s49 << 14) | (s48 >>> 18);
 
-    s[0] = b0 ^ (~b2 & b4);
-    s[1] = b1 ^ (~b3 & b5);
-    s[10] = b10 ^ (~b12 & b14);
-    s[11] = b11 ^ (~b13 & b15);
-    s[20] = b20 ^ (~b22 & b24);
-    s[21] = b21 ^ (~b23 & b25);
-    s[30] = b30 ^ (~b32 & b34);
-    s[31] = b31 ^ (~b33 & b35);
-    s[40] = b40 ^ (~b42 & b44);
-    s[41] = b41 ^ (~b43 & b45);
-    s[2] = b2 ^ (~b4 & b6);
-    s[3] = b3 ^ (~b5 & b7);
-    s[12] = b12 ^ (~b14 & b16);
-    s[13] = b13 ^ (~b15 & b17);
-    s[22] = b22 ^ (~b24 & b26);
-    s[23] = b23 ^ (~b25 & b27);
-    s[32] = b32 ^ (~b34 & b36);
-    s[33] = b33 ^ (~b35 & b37);
-    s[42] = b42 ^ (~b44 & b46);
-    s[43] = b43 ^ (~b45 & b47);
-    s[4] = b4 ^ (~b6 & b8);
-    s[5] = b5 ^ (~b7 & b9);
-    s[14] = b14 ^ (~b16 & b18);
-    s[15] = b15 ^ (~b17 & b19);
-    s[24] = b24 ^ (~b26 & b28);
-    s[25] = b25 ^ (~b27 & b29);
-    s[34] = b34 ^ (~b36 & b38);
-    s[35] = b35 ^ (~b37 & b39);
-    s[44] = b44 ^ (~b46 & b48);
-    s[45] = b45 ^ (~b47 & b49);
-    s[6] = b6 ^ (~b8 & b0);
-    s[7] = b7 ^ (~b9 & b1);
-    s[16] = b16 ^ (~b18 & b10);
-    s[17] = b17 ^ (~b19 & b11);
-    s[26] = b26 ^ (~b28 & b20);
-    s[27] = b27 ^ (~b29 & b21);
-    s[36] = b36 ^ (~b38 & b30);
-    s[37] = b37 ^ (~b39 & b31);
-    s[46] = b46 ^ (~b48 & b40);
-    s[47] = b47 ^ (~b49 & b41);
-    s[8] = b8 ^ (~b0 & b2);
-    s[9] = b9 ^ (~b1 & b3);
-    s[18] = b18 ^ (~b10 & b12);
-    s[19] = b19 ^ (~b11 & b13);
-    s[28] = b28 ^ (~b20 & b22);
-    s[29] = b29 ^ (~b21 & b23);
-    s[38] = b38 ^ (~b30 & b32);
-    s[39] = b39 ^ (~b31 & b33);
-    s[48] = b48 ^ (~b40 & b42);
-    s[49] = b49 ^ (~b41 & b43);
+    s0 = b0 ^ (~b2 & b4);
+    s1 = b1 ^ (~b3 & b5);
+    s10 = b10 ^ (~b12 & b14);
+    s11 = b11 ^ (~b13 & b15);
+    s20 = b20 ^ (~b22 & b24);
+    s21 = b21 ^ (~b23 & b25);
+    s30 = b30 ^ (~b32 & b34);
+    s31 = b31 ^ (~b33 & b35);
+    s40 = b40 ^ (~b42 & b44);
+    s41 = b41 ^ (~b43 & b45);
+    s2 = b2 ^ (~b4 & b6);
+    s3 = b3 ^ (~b5 & b7);
+    s12 = b12 ^ (~b14 & b16);
+    s13 = b13 ^ (~b15 & b17);
+    s22 = b22 ^ (~b24 & b26);
+    s23 = b23 ^ (~b25 & b27);
+    s32 = b32 ^ (~b34 & b36);
+    s33 = b33 ^ (~b35 & b37);
+    s42 = b42 ^ (~b44 & b46);
+    s43 = b43 ^ (~b45 & b47);
+    s4 = b4 ^ (~b6 & b8);
+    s5 = b5 ^ (~b7 & b9);
+    s14 = b14 ^ (~b16 & b18);
+    s15 = b15 ^ (~b17 & b19);
+    s24 = b24 ^ (~b26 & b28);
+    s25 = b25 ^ (~b27 & b29);
+    s34 = b34 ^ (~b36 & b38);
+    s35 = b35 ^ (~b37 & b39);
+    s44 = b44 ^ (~b46 & b48);
+    s45 = b45 ^ (~b47 & b49);
+    s6 = b6 ^ (~b8 & b0);
+    s7 = b7 ^ (~b9 & b1);
+    s16 = b16 ^ (~b18 & b10);
+    s17 = b17 ^ (~b19 & b11);
+    s26 = b26 ^ (~b28 & b20);
+    s27 = b27 ^ (~b29 & b21);
+    s36 = b36 ^ (~b38 & b30);
+    s37 = b37 ^ (~b39 & b31);
+    s46 = b46 ^ (~b48 & b40);
+    s47 = b47 ^ (~b49 & b41);
+    s8 = b8 ^ (~b0 & b2);
+    s9 = b9 ^ (~b1 & b3);
+    s18 = b18 ^ (~b10 & b12);
+    s19 = b19 ^ (~b11 & b13);
+    s28 = b28 ^ (~b20 & b22);
+    s29 = b29 ^ (~b21 & b23);
+    s38 = b38 ^ (~b30 & b32);
+    s39 = b39 ^ (~b31 & b33);
+    s48 = b48 ^ (~b40 & b42);
+    s49 = b49 ^ (~b41 & b43);
 
-    s[0] ^= RC[n];
-    s[1] ^= RC[n + 1];
+    s0 ^= RC[n] as number;
+    s1 ^= RC[n + 1] as number;
   }
-};
+  s[0] = s0;
+  s[1] = s1;
+  s[2] = s2;
+  s[3] = s3;
+  s[4] = s4;
+  s[5] = s5;
+  s[6] = s6;
+  s[7] = s7;
+  s[8] = s8;
+  s[9] = s9;
+  s[10] = s10;
+  s[11] = s11;
+  s[12] = s12;
+  s[13] = s13;
+  s[14] = s14;
+  s[15] = s15;
+  s[16] = s16;
+  s[17] = s17;
+  s[18] = s18;
+  s[19] = s19;
+  s[20] = s20;
+  s[21] = s21;
+  s[22] = s22;
+  s[23] = s23;
+  s[24] = s24;
+  s[25] = s25;
+  s[26] = s26;
+  s[27] = s27;
+  s[28] = s28;
+  s[29] = s29;
+  s[30] = s30;
+  s[31] = s31;
+  s[32] = s32;
+  s[33] = s33;
+  s[34] = s34;
+  s[35] = s35;
+  s[36] = s36;
+  s[37] = s37;
+  s[38] = s38;
+  s[39] = s39;
+  s[40] = s40;
+  s[41] = s41;
+  s[42] = s42;
+  s[43] = s43;
+  s[44] = s44;
+  s[45] = s45;
+  s[46] = s46;
+  s[47] = s47;
+  s[48] = s48;
+  s[49] = s49;
+}

@@ -107,8 +107,8 @@ export function memoizeFactory({
           }
 
           const result = context
-            ? (target as (this: This, ...args: Args) => Return).call(this, ...args)
-            : (target as (...args: Args) => Return)(...args);
+            ? (target as (this: This, ...args: Args) => Return).apply(this, args)
+            : (target as (...args: Args) => Return).apply(undefined, args);
 
           if (cache.size >= maxCacheSizePerTarget) {
             const oldestKey = cache.keys().next().value as string;

@@ -78,8 +78,8 @@ export function memoizeOneFactory({
           if (lastHash !== hash || now - lastCachedAt > cacheDuration) {
             lastHash = hash;
             lastCache = context
-              ? (target as (this: This, ...args: Args) => Return).call(this, ...args)
-              : (target as (...args: Args) => Return)(...args);
+              ? (target as (this: This, ...args: Args) => Return).apply(this, args)
+              : (target as (...args: Args) => Return).apply(undefined, args);
             lastCachedAt = now;
           }
           return lastCache;
