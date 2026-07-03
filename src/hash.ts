@@ -140,21 +140,21 @@ export function sha3_512(message: string): string {
     const w2 = s[w + 2] as number;
     const w3 = s[w + 3] as number;
     hex +=
-      (HEX_PAIRS[w0 & 0xFF] as string) +
-      HEX_PAIRS[(w0 >> 8) & 0xFF] +
-      HEX_PAIRS[(w0 >> 16) & 0xFF] +
+      (HEX_PAIRS[w0 & 0xff] as string) +
+      HEX_PAIRS[(w0 >> 8) & 0xff] +
+      HEX_PAIRS[(w0 >> 16) & 0xff] +
       HEX_PAIRS[w0 >>> 24] +
-      HEX_PAIRS[w1 & 0xFF] +
-      HEX_PAIRS[(w1 >> 8) & 0xFF] +
-      HEX_PAIRS[(w1 >> 16) & 0xFF] +
+      HEX_PAIRS[w1 & 0xff] +
+      HEX_PAIRS[(w1 >> 8) & 0xff] +
+      HEX_PAIRS[(w1 >> 16) & 0xff] +
       HEX_PAIRS[w1 >>> 24] +
-      HEX_PAIRS[w2 & 0xFF] +
-      HEX_PAIRS[(w2 >> 8) & 0xFF] +
-      HEX_PAIRS[(w2 >> 16) & 0xFF] +
+      HEX_PAIRS[w2 & 0xff] +
+      HEX_PAIRS[(w2 >> 8) & 0xff] +
+      HEX_PAIRS[(w2 >> 16) & 0xff] +
       HEX_PAIRS[w2 >>> 24] +
-      HEX_PAIRS[w3 & 0xFF] +
-      HEX_PAIRS[(w3 >> 8) & 0xFF] +
-      HEX_PAIRS[(w3 >> 16) & 0xFF] +
+      HEX_PAIRS[w3 & 0xff] +
+      HEX_PAIRS[(w3 >> 8) & 0xff] +
+      HEX_PAIRS[(w3 >> 16) & 0xff] +
       HEX_PAIRS[w3 >>> 24];
   }
   return hex;

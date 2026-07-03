@@ -10,7 +10,7 @@
 ## Features
 
 - **One API for everything** — apply the same `memoize` to class methods, getters (as a decorator), and standalone functions (as a wrapper).
-- **Structure-aware cache keys** — arguments are serialized (including `Map`, `Set`, `Date`, `RegExp`, `URL`, `Error`, `Uint8Array`, `bigint`, and circular references) and hashed with SHA3-512, so structurally equal arguments hit the same cache entry.
+- **Structure-aware cache keys** — arguments are serialized (including `Map`, `Set`, `Date`, `RegExp`, `URL`, `Error`, `bigint`, and circular references) and hashed with SHA3-512, so structurally equal arguments hit the same cache entry.
 - **Expiration and size limits** — per-entry TTL via `cacheDuration` and a FIFO size cap via `maxCacheSizePerTarget`.
 - **Explicit invalidation** — group memoized targets into clearable cache groups; caches are tracked via `WeakRef`, so they never leak.
 - **Pluggable persistence** — back the in-memory cache with any storage (file, Redis, database) through three small callbacks.
@@ -175,7 +175,7 @@ const memoizeIgnoringArgs = memoizeFactory({ getCacheKey: getCacheKeyOfEmptyStri
 const memoizeByUserId = memoizeFactory({ getCacheKey: (_self, args) => (args[0] as { id: string }).id });
 ```
 
-Serialization is powered by an embedded fork of [oson](https://github.com/KnorpelSenf/oson), which — unlike `JSON.stringify` — handles `undefined`, `bigint`, `NaN`, `Infinity`, `Map`, `Set`, `Date`, `RegExp`, `URL`, `Error`, `Uint8Array`, and circular references. The serializer (`stringify`) and hash (`sha3_512`) are exported for direct use.
+Serialization is powered by an embedded fork of [oson](https://github.com/KnorpelSenf/oson), which — unlike `JSON.stringify` — handles `undefined`, `bigint`, `NaN`, `Infinity`, `Map`, `Set`, `Date`, `RegExp`, `URL`, `Error`, and circular references (`Uint8Array` is currently supported only when its contents decode to Latin-1 text). The serializer (`stringify`) and hash (`sha3_512`) are exported for direct use.
 
 ## API Summary
 

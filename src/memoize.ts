@@ -106,9 +106,8 @@ export function memoizeFactory({
             cache.delete(hash);
           }
 
-          const result = context
-            ? (target as (this: This, ...args: Args) => Return).apply(this, args)
-            : (target as (...args: Args) => Return).apply(undefined, args);
+          // `Reflect.apply` avoids reading `target.apply`, which the wrapped function may shadow.
+          const result = Reflect.apply(target, context ? this : undefined, args) as Return;
 
           if (cache.size >= maxCacheSizePerTarget) {
             const oldestKey = cache.keys().next().value as string;
