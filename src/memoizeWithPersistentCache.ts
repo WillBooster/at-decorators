@@ -66,7 +66,6 @@ export function memoizeWithPersistentCacheFactory({
             const now = Date.now();
             const cacheEntry = cache.get(hash);
 
-            // Check in-memory cache first
             if (cacheEntry) {
               const [cachedValue, cachedAt] = cacheEntry;
               if (now - cachedAt <= cacheDuration) {
@@ -77,7 +76,6 @@ export function memoizeWithPersistentCacheFactory({
               ignoreCacheOperationError(() => removeCache(persistentKey, hash));
             }
 
-            // Try reading from persistent cache
             try {
               const persistentCache = tryReadingCache(persistentKey, hash);
               if (persistentCache) {
@@ -115,7 +113,6 @@ export function memoizeWithPersistentCacheFactory({
             const now = Date.now();
             const cacheEntry = cache.get(hash);
 
-            // Check in-memory cache first
             if (cacheEntry) {
               const [cachedValue, cachedAt] = cacheEntry;
               if (now - cachedAt <= cacheDuration) {
@@ -126,7 +123,6 @@ export function memoizeWithPersistentCacheFactory({
               ignoreCacheOperationError(() => removeCache(persistentKey, hash));
             }
 
-            // Try reading from persistent cache
             try {
               const persistentCache = tryReadingCache(persistentKey, hash);
               if (persistentCache) {
