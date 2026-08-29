@@ -59,7 +59,7 @@
     "oxfmt": "0.64.0",
     "oxlint": "1.79.0",
     "oxlint-tsgolint": "7.0.2001",
-    "rolldown": "1.2.4",
+    "rolldown": "1.2.5",
     "semantic-release": "25.0.9",
     "sort-package-json": "4.0.0",
     "typescript": "7.0.2",
