@@ -41,9 +41,9 @@
     "verify-full": "bun wb verify --full"
   },
   "devDependencies": {
-    "@babel/core": "8.0.1",
+    "@babel/core": "8.0.5",
     "@babel/plugin-proposal-decorators": "8.0.2",
-    "@rolldown/plugin-babel": "0.2.3",
+    "@rolldown/plugin-babel": "0.2.4",
     "@tsconfig/bun": "1.0.11",
     "@tsconfig/node-lts": "24.0.1",
     "@tsconfig/node-ts": "23.6.4",
@@ -59,7 +59,7 @@
     "oxfmt": "0.67.0",
     "oxlint": "1.82.0",
     "oxlint-tsgolint": "7.0.2001",
-    "rolldown": "1.2.7",
+    "rolldown": "1.2.8",
     "semantic-release": "25.0.9",
     "sort-package-json": "4.0.0",
     "typescript": "7.0.2",
