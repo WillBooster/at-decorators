@@ -2,7 +2,6 @@ import { setTimeout } from 'node:timers/promises';
 
 import { getCacheKeyOfEmptyString, getCacheKeyOfHash } from '../../src/getCacheKey.js';
 import { memoizeOne, memoizeOneFactory, memoizeOneWithEmptyHash } from '../../src/memoizeOne.js';
-
 import { getNextInteger } from './shared.js';
 
 describe('memoizeOne with getCacheKey which includes this and arguments', () => {

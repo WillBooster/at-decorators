@@ -1,7 +1,6 @@
 import { setTimeout } from 'node:timers/promises';
 
 import { memoizeWithPersistentCacheFactory } from '../../src/memoizeWithPersistentCache.js';
-
 import { getNextInteger } from './shared.js';
 
 describe('persistent cache', () => {

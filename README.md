@@ -4,7 +4,7 @@
 [![license](https://img.shields.io/npm/l/at-decorators.svg)](https://www.npmjs.com/package/at-decorators)
 [![Test](https://github.com/WillBooster/at-decorators/actions/workflows/test.yml/badge.svg)](https://github.com/WillBooster/at-decorators/actions/workflows/test.yml)
 [![semantic-release](https://img.shields.io/badge/%20%20%F0%9F%93%A6%F0%9F%9A%80-semantic--release-e10079.svg)](https://github.com/semantic-release/semantic-release)
-[![wbfy](https://img.shields.io/badge/wbfy-20.46.3-1e90ff.svg)](https://github.com/WillBooster/shared/tree/main/packages/wbfy)
+[![wbfy](https://img.shields.io/badge/wbfy-20.48.2-1e90ff.svg)](https://github.com/WillBooster/shared/tree/main/packages/wbfy)
 
 :wrench: Fast, dependency-free memoization for TypeScript, built on [TC39 Stage 3 decorators](https://github.com/tc39/proposal-decorators) — for class methods, getters, and plain functions.
 
@@ -80,7 +80,7 @@ class ExchangeRateService {
 `memoizeOne` remembers a single entry — ideal when arguments rarely change between consecutive calls and you want O(1) memory:
 
 ```ts
-import { memoizeOne, memoizeOneWithEmptyHash, memoizeOneFactory } from 'at-decorators';
+import { memoizeOne, memoizeOneFactory, memoizeOneWithEmptyHash } from 'at-decorators';
 
 // Re-computes only when the arguments (or `this`) change.
 const formatReport = memoizeOne((rows: Row[]) => rows.map(renderRow).join('\n'));
@@ -161,7 +161,7 @@ Each memoized target gets a `persistentKey` namespace. Lookups check the in-memo
 The cache key determines what counts as "the same call". Three implementations are provided, and any `(self, args) => string` works via the `getCacheKey` option:
 
 ```ts
-import { getCacheKeyOfHash, getCacheKeyOfStringified, getCacheKeyOfEmptyString, memoizeFactory } from 'at-decorators';
+import { getCacheKeyOfEmptyString, getCacheKeyOfHash, getCacheKeyOfStringified, memoizeFactory } from 'at-decorators';
 
 // Default: SHA3-512 hash of the serialized `this` and arguments — fixed-length keys.
 const memoizeByHash = memoizeFactory({ getCacheKey: getCacheKeyOfHash });

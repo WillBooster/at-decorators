@@ -1,4 +1,4 @@
-import { memoizeFactory, type MemoizeCache, type MemoizeCacheRegistry } from './memoize.js';
+import { type MemoizeCache, type MemoizeCacheRegistry, memoizeFactory } from './memoize.js';
 
 const MEMOIZE_CACHE_STORE_MARK = Symbol.for('at-decorators.memoizeCacheStore');
 const MIN_CACHE_REF_PRUNE_SIZE = 1024;
