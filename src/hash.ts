@@ -106,7 +106,9 @@ export function sha3_512InJs(message: string): string {
   const fullBlockCount = Math.floor(byteLength / BYTE_COUNT);
   const byteIndex = fullBlockCount * BYTE_COUNT;
   if (IS_LITTLE_ENDIAN) {
-    absorbBlocks(s, words, fullBlockCount);
+    if (fullBlockCount > 0) {
+      absorbBlocks(s, words, fullBlockCount);
+    }
   } else {
     for (let blockStart = 0; blockStart < byteIndex; blockStart += BYTE_COUNT) {
       for (let w = 0; w < BLOCK_COUNT; w++) {
