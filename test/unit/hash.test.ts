@@ -28,11 +28,16 @@ test('sha3_512InJs matches node:crypto across block boundaries and non-ASCII inp
 });
 
 test.each([
-  ['lacks SHA3-512', { getHashes: () => ['sha256'], createHash: throwUnsupportedDigest }],
-  ['lacks getHashes', { createHash: throwUnsupportedDigest }],
-])('sha3_512 falls back to JavaScript where node:crypto %s', async (_, crypto) => {
+  ['process is absent', undefined],
+  ['process lacks getBuiltinModule', {}],
+  [
+    'node:crypto lacks SHA3-512',
+    { getBuiltinModule: () => ({ getHashes: () => ['sha256'], createHash: throwUnsupportedDigest }) },
+  ],
+  ['node:crypto lacks getHashes', { getBuiltinModule: () => ({ createHash: throwUnsupportedDigest }) }],
+])('sha3_512 falls back to JavaScript where %s', async (_, process) => {
   vi.resetModules();
-  vi.stubGlobal('process', { getBuiltinModule: () => crypto });
+  vi.stubGlobal('process', process);
   try {
     const { sha3_512: hash } = await import('../../src/hash.js');
     expect(hash('The quick brown fox jumps over the lazy dog')).toBe(
