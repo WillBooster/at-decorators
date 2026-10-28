@@ -26,3 +26,23 @@ test('sha3_512InJs matches node:crypto across block boundaries and non-ASCII inp
   const large = 'あ🎉x'.repeat(100_000);
   expect(sha3_512InJs(large)).toBe(createHash('sha3-512').update(large).digest('hex'));
 });
+
+test.each([
+  ['lacks SHA3-512', { getHashes: () => ['sha256'], createHash: throwUnsupportedDigest }],
+  ['lacks getHashes', { createHash: throwUnsupportedDigest }],
+])('sha3_512 falls back to JavaScript where node:crypto %s', async (_, crypto) => {
+  vi.resetModules();
+  vi.stubGlobal('process', { getBuiltinModule: () => crypto });
+  try {
+    const { sha3_512: hash } = await import('../../src/hash.js');
+    expect(hash('The quick brown fox jumps over the lazy dog')).toBe(
+      '01dedd5de4ef14642445ba5f5b97c15e47b9ad931326e4b0727cd94cefc44fff23f07bf543139939b49128caf436dc1bdee54fcb24023a08d9403f9b4bf0d450'
+    );
+  } finally {
+    vi.unstubAllGlobals();
+  }
+});
+
+function throwUnsupportedDigest(): never {
+  throw new Error('Digest method not supported');
+}

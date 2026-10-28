@@ -64,10 +64,10 @@ const MAX_RETAINED_BUFFER_LENGTH = 1 << 20;
 // which holds on all mainstream platforms; fall back to byte-wise composition otherwise.
 const IS_LITTLE_ENDIAN = new Uint8Array(new Uint32Array([1]).buffer)[0] === 1;
 
-// Browsers lack `process`, some polyfill it without `getBuiltinModule`, and runtimes whose `node:crypto` is backed by
-// BoringSSL (e.g., Electron, Cloudflare Workers) lack SHA3-512; all of them fall back to the JS implementation.
+// Browsers lack `process`, some polyfill it (or `node:crypto`) only partially, and runtimes whose `node:crypto` is backed
+// by BoringSSL (e.g., Electron, Cloudflare Workers) lack SHA3-512; all of them fall back to the JS implementation.
 const nodeCrypto = globalThis.process?.getBuiltinModule?.('node:crypto');
-const nativeSha3_512 = nodeCrypto?.getHashes().includes('sha3-512') ? nodeCrypto : undefined;
+const nativeSha3_512 = nodeCrypto?.getHashes?.().includes('sha3-512') ? nodeCrypto : undefined;
 
 /**
  * Computes the SHA3-512 hash of the given string (encoded as UTF-8) and returns it as a hex string.
@@ -78,9 +78,6 @@ export function sha3_512(message: string): string {
   return nativeSha3_512 ? nativeSha3_512.createHash('sha3-512').update(message).digest('hex') : sha3_512InJs(message);
 }
 
-/**
- * Computes the SHA3-512 hash of the given string (encoded as UTF-8) in pure JavaScript and returns it as a hex string.
- */
 // eslint-disable-next-line @typescript-eslint/naming-convention
 export function sha3_512InJs(message: string): string {
   // A UTF-16 code unit encodes to at most 3 UTF-8 bytes.
