@@ -64,8 +64,10 @@ const MAX_RETAINED_BUFFER_LENGTH = 1 << 20;
 // which holds on all mainstream platforms; fall back to byte-wise composition otherwise.
 const IS_LITTLE_ENDIAN = new Uint8Array(new Uint32Array([1]).buffer)[0] === 1;
 
-// Browsers lack `process`, and some polyfill it without `getBuiltinModule`; both fall back to the JS implementation.
+// Browsers lack `process`, some polyfill it without `getBuiltinModule`, and runtimes whose `node:crypto` is backed by
+// BoringSSL (e.g., Electron, Cloudflare Workers) lack SHA3-512; all of them fall back to the JS implementation.
 const nodeCrypto = globalThis.process?.getBuiltinModule?.('node:crypto');
+const nativeSha3_512 = nodeCrypto?.getHashes().includes('sha3-512') ? nodeCrypto : undefined;
 
 /**
  * Computes the SHA3-512 hash of the given string (encoded as UTF-8) and returns it as a hex string.
@@ -73,7 +75,7 @@ const nodeCrypto = globalThis.process?.getBuiltinModule?.('node:crypto');
  */
 // eslint-disable-next-line @typescript-eslint/naming-convention
 export function sha3_512(message: string): string {
-  return nodeCrypto ? nodeCrypto.createHash('sha3-512').update(message).digest('hex') : sha3_512InJs(message);
+  return nativeSha3_512 ? nativeSha3_512.createHash('sha3-512').update(message).digest('hex') : sha3_512InJs(message);
 }
 
 /**
@@ -107,7 +109,7 @@ export function sha3_512InJs(message: string): string {
   const fullBlockCount = Math.floor(byteLength / BYTE_COUNT);
   const byteIndex = fullBlockCount * BYTE_COUNT;
   if (IS_LITTLE_ENDIAN) {
-    absorbBlocks(s, words, 0, fullBlockCount);
+    absorbBlocks(s, words, fullBlockCount);
   } else {
     for (let blockStart = 0; blockStart < byteIndex; blockStart += BYTE_COUNT) {
       for (let w = 0; w < BLOCK_COUNT; w++) {
@@ -118,7 +120,7 @@ export function sha3_512InJs(message: string): string {
           ((bytes[b + 2] as number) << 16) |
           ((bytes[b + 3] as number) << 24);
       }
-      absorbBlocks(s, blocks, 0, 1);
+      absorbBlocks(s, blocks, 1);
     }
   }
 
@@ -131,7 +133,7 @@ export function sha3_512InJs(message: string): string {
   const remainder = byteLength - byteIndex;
   blocks[remainder >> 2] = (blocks[remainder >> 2] as number) | (0x06 << ((remainder & 3) << 3));
   blocks[BLOCK_COUNT - 1] = (blocks[BLOCK_COUNT - 1] as number) | 0x80_00_00_00;
-  absorbBlocks(s, blocks, 0, 1);
+  absorbBlocks(s, blocks, 1);
 
   return toHex(s);
 }
@@ -170,7 +172,7 @@ function toHex(s: Int32Array): string {
 // Their complements are taken on load and undone on store, so `s` always holds the plain state.
 // Only `Uint32Array` is passed as `words` to keep the element accesses monomorphic.
 // eslint-disable-next-line max-lines-per-function
-function absorbBlocks(s: Int32Array, words: Uint32Array, wordIndex: number, blockCount: number): void {
+function absorbBlocks(s: Int32Array, words: Uint32Array, blockCount: number): void {
   let h: number;
   let l: number;
   let n: number;
@@ -284,7 +286,7 @@ function absorbBlocks(s: Int32Array, words: Uint32Array, wordIndex: number, bloc
   let s47 = s[47] as number;
   let s48 = s[48] as number;
   let s49 = s[49] as number;
-  for (let blockEnd = wordIndex + blockCount * BLOCK_COUNT; wordIndex < blockEnd; wordIndex += BLOCK_COUNT) {
+  for (let wordIndex = 0, wordEnd = blockCount * BLOCK_COUNT; wordIndex < wordEnd; wordIndex += BLOCK_COUNT) {
     s0 ^= words[wordIndex + 0] as number;
     s1 ^= words[wordIndex + 1] as number;
     s2 ^= words[wordIndex + 2] as number;
